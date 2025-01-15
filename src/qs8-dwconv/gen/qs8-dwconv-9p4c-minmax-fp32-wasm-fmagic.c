@@ -8,10 +8,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
 
-#include <xnnpack/dwconv.h>
-#include <xnnpack/math.h>
-
+#include "xnnpack/common.h"
+#include "xnnpack/dwconv.h"
+#include "xnnpack/math.h"
+#include "xnnpack/microparams.h"
 
 void xnn_qs8_dwconv_minmax_fp32_ukernel_9p4c__wasm_fmagic(
     size_t channels,
@@ -28,11 +31,11 @@ void xnn_qs8_dwconv_minmax_fp32_ukernel_9p4c__wasm_fmagic(
   assert(channels != 0);
   assert(output_width != 0);
 
-  const float vscale = params->fp32_scalar_fmagic.scale;
-  const float voutput_min_less_zero_point = params->fp32_scalar_fmagic.output_min_less_zero_point;
-  const float voutput_max_less_zero_point = params->fp32_scalar_fmagic.output_max_less_zero_point;
-  const float vmagic_bias = params->fp32_scalar_fmagic.magic_bias;
-  const int32_t vmagic_bias_less_output_zero_point = params->fp32_scalar_fmagic.magic_bias_less_output_zero_point;
+  const float vscale = params->fp32_scalar.scale;
+  const float voutput_min_less_zero_point = (int32_t) params->fp32_scalar.output_min - (int32_t) params->fp32_scalar.output_zero_point;
+  const float voutput_max_less_zero_point = (int32_t) params->fp32_scalar.output_max - (int32_t) params->fp32_scalar.output_zero_point;
+  const float vmagic_bias = 12582912.0f;
+  const int32_t vmagic_bias_less_output_zero_point = INT32_C(0x4B400000) - (int32_t) params->fp32_scalar.output_zero_point;
   do {
     const int8_t* i0 = input[0];
     assert(i0 != NULL);
@@ -276,7 +279,7 @@ void xnn_qs8_dwconv_minmax_fp32_ukernel_9p4c__wasm_fmagic(
       const int8_t* k = (const int8_t*) ((uintptr_t) w + 4 * sizeof(int32_t));
       do {
         int32_t vacc = *((const int32_t*) w);
-        w = (const void*) ((uintptr_t) w + sizeof(int32_t));
+        w = (const int32_t*) w + 1;
 
         const int32_t vi0 = (int32_t) *i0++;
         const int32_t vk0 = (int32_t) k[0];

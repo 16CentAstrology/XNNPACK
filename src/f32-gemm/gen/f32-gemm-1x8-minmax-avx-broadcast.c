@@ -8,20 +8,24 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include <immintrin.h>
 
-#include <xnnpack/gemm.h>
+#include "xnnpack/common.h"
+#include "xnnpack/gemm.h"
+#include "xnnpack/microparams.h"
 
 
 void xnn_f32_gemm_minmax_ukernel_1x8__avx_broadcast(
     size_t mr,
     size_t nc,
     size_t kc,
-    const float*restrict a,
+    const float* restrict a,
     size_t a_stride,
-    const float*restrict w,
-    float*restrict c,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     const union xnn_f32_minmax_params params[restrict XNN_MIN_ELEMENTS(1)])
@@ -37,6 +41,11 @@ void xnn_f32_gemm_minmax_ukernel_1x8__avx_broadcast(
 
   const float* a0 = a;
   float* c0 = c;
+
+  const __m256 vmin = _mm256_set1_ps(params->scalar.min);
+  const __m256 vmax = _mm256_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
 
   do {
     __m256 vacc0x01234567 = _mm256_load_ps(w + 0);
@@ -55,11 +64,9 @@ void xnn_f32_gemm_minmax_ukernel_1x8__avx_broadcast(
       k -= sizeof(float);
     } while (k != 0);
 
-    const __m256 vmin = _mm256_load_ps(params->avx.min);
-    vacc0x01234567 = _mm256_max_ps(vacc0x01234567, vmin);
+    vacc0x01234567 = _mm256_max_ps(vmin, vacc0x01234567);
 
-    const __m256 vmax = _mm256_load_ps(params->avx.max);
-    vacc0x01234567 = _mm256_min_ps(vacc0x01234567, vmax);
+    vacc0x01234567 = _mm256_min_ps(vmax, vacc0x01234567);
 
     if XNN_LIKELY(nc >= 8) {
       _mm256_storeu_ps(c0, vacc0x01234567);

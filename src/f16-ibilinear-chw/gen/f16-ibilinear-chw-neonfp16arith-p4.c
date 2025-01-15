@@ -11,16 +11,16 @@
 
 #include <arm_neon.h>
 
-#include <xnnpack/ibilinear.h>
+#include "xnnpack/ibilinear.h"
 
 
 void xnn_f16_ibilinear_chw_ukernel__neonfp16arith_p4(
     size_t output_pixels,
     size_t channels,
-    const void**restrict input,
+    const xnn_float16** restrict input,
     size_t input_offset,
-    const void*restrict weights,
-    void*restrict output,
+    const xnn_float16* restrict weights,
+    xnn_float16* restrict output,
     size_t input_increment) XNN_OOB_READS
 {
   assert(output_pixels != 0);
@@ -30,7 +30,7 @@ void xnn_f16_ibilinear_chw_ukernel__neonfp16arith_p4(
   uint16_t* o = (uint16_t*) output;
   do {
     const uint16_t** i = (const uint16_t**)input;
-    const uint16_t* w = weights;
+    const uint16_t* w = (const uint16_t*)weights;
     size_t p = output_pixels;
 
     for (; p >= 4; p -= 4) {
@@ -156,7 +156,7 @@ void xnn_f16_ibilinear_chw_ukernel__neonfp16arith_p4(
         const float16x4_t vd = vsub_f16(vr, vl);
         const float16x4_t vo = vfma_f16(vl, vd, valphah);
 
-        vst1_lane_f16(o, vo, 0); o += 1;
+        vst1_lane_u16(o, vreinterpret_u16_f16(vo), 0); o += 1;
       }
     }
 

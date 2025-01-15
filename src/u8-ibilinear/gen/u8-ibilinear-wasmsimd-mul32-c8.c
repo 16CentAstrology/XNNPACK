@@ -11,17 +11,17 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/common.h>
-#include <xnnpack/ibilinear.h>
+#include "xnnpack/common.h"
+#include "xnnpack/ibilinear.h"
 
 
 void xnn_u8_ibilinear_ukernel__wasmsimd_mul32_c8(
     size_t output_pixels,
     size_t channels,
-    const uint8_t**restrict input,
+    const uint8_t** restrict input,
     size_t input_offset,
-    const int16_t*restrict weights,
-    uint8_t*restrict output,
+    const int16_t* restrict weights,
+    uint8_t* restrict output,
     size_t output_increment) XNN_OOB_READS
 {
   assert(output_pixels != 0);

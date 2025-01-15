@@ -7,27 +7,27 @@ $assert ACTIVATION in ["LINEAR", "RELU", "MINMAX"]
 $assert ACTIVATION != "LINEAR" or not WASM
 #include <assert.h>
 
-#include <xnnpack/igemm.h>
-#include <xnnpack/math.h>
+#include "xnnpack/igemm.h"
+#include "xnnpack/math.h"
 
 
 $MIN_F32 = "__builtin_wasm_min_f32" if WASM else "math_min_f32"
 $MAX_F32 = "__builtin_wasm_max_f32" if WASM else "math_max_f32"
 $SUFFIX = {"LINEAR": "", "RELU": "_relu", "MINMAX": "_minmax"}[ACTIVATION]
-$PARAMS = {"LINEAR": "xnn_f32_default_params", "RELU": "xnn_f32_relu_params", "MINMAX": "xnn_f32_minmax_params"}[ACTIVATION]
+$PARAMS = {"LINEAR": "struct xnn_f32_default_params", "RELU": "struct xnn_f32_relu_params", "MINMAX": "union xnn_f32_minmax_params"}[ACTIVATION]
 void xnn_f32_igemm${SUFFIX}_ukernel_${MR}x${NR}__${"wasm" if WASM else "scalar"}(
     size_t mr,
     size_t nc,
     size_t kc,
     size_t ks,
-    const float**restrict a,
-    const float*restrict w,
-    float*restrict c,
+    const float** restrict a,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     size_t a_offset,
     const float* zero,
-    const union ${PARAMS} params[restrict XNN_MIN_ELEMENTS(1)])
+    const ${PARAMS} params[restrict XNN_MIN_ELEMENTS(1)])
 {
   assert(mr != 0);
   assert(mr <= ${MR});
@@ -124,7 +124,7 @@ void xnn_f32_igemm${SUFFIX}_ukernel_${MR}x${NR}__${"wasm" if WASM else "scalar"}
             $for N in range(1 << LOG2N):
               c${M}[${N}] = vacc${M}${N};
             $if LOG2N != 0:
-              $for N in range(1 << (LOG2N - 1)):
+              $for N in range(NR - (1 << LOG2N) - 1):
                 vacc${M}${N} = vacc${M}${N + (1 << LOG2N)};
               c${M} += ${1 << LOG2N};
         }

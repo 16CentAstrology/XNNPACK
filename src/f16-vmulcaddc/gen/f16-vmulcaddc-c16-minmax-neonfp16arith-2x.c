@@ -11,17 +11,17 @@
 
 #include <arm_neon.h>
 
-#include <xnnpack/math.h>
-#include <xnnpack/vmulcaddc.h>
+#include "xnnpack/math.h"
+#include "xnnpack/vmulcaddc.h"
 
 
 void xnn_f16_vmulcaddc_minmax_ukernel_c16__neonfp16arith_2x(
     size_t rows,
     size_t channels,
-    const void*restrict input,
+    const xnn_float16* restrict input,
     size_t input_stride,
-    const void*restrict weights,
-    void*restrict output,
+    const xnn_float16* restrict weights,
+    xnn_float16* restrict output,
     size_t output_stride,
     const union xnn_f16_minmax_params params[restrict XNN_MIN_ELEMENTS(1)]) XNN_OOB_READS
 {
@@ -37,8 +37,8 @@ void xnn_f16_vmulcaddc_minmax_ukernel_c16__neonfp16arith_2x(
   const size_t input_increment = input_stride * 2 - channels;
   const size_t output_increment = output_stride * 2 - channels;
 
-  const float16x8_t vmin = vreinterpretq_f16_u16(vld1q_dup_u16(&params->fp16arith.min));
-  const float16x8_t vmax = vreinterpretq_f16_u16(vld1q_dup_u16(&params->fp16arith.max));
+  const float16x8_t vmin = vreinterpretq_f16_u16(vld1q_dup_u16((const uint16_t*) &params->scalar.min));
+  const float16x8_t vmax = vreinterpretq_f16_u16(vld1q_dup_u16((const uint16_t*) &params->scalar.max));
   do {
     if XNN_UNPREDICTABLE(rows < 2) {
       i1 = i0;
@@ -134,8 +134,8 @@ void xnn_f16_vmulcaddc_minmax_ukernel_c16__neonfp16arith_2x(
         vacc1x0123 = vext_f16(vacc1x0123, vacc1x0123, 2);
       }
       if (c & (1 * sizeof(uint16_t))) {
-        vst1_lane_f16(o0, vacc0x0123, 0); o0 += 1;
-        vst1_lane_f16(o1, vacc1x0123, 0); o1 += 1;
+        vst1_lane_u16(o0, vreinterpret_u16_f16(vacc0x0123), 0); o0 += 1;
+        vst1_lane_u16(o1, vreinterpret_u16_f16(vacc1x0123), 0); o1 += 1;
       }
     }
     i0 = (const uint16_t*) ((uintptr_t) i0 + input_increment);

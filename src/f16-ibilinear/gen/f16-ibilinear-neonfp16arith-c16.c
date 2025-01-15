@@ -11,17 +11,18 @@
 
 #include <arm_neon.h>
 
-#include <xnnpack/common.h>
-#include <xnnpack/ibilinear.h>
+#include "xnnpack/common.h"
+#include "xnnpack/ibilinear.h"
+#include "xnnpack/math.h"
 
 
 void xnn_f16_ibilinear_ukernel__neonfp16arith_c16(
     size_t output_pixels,
     size_t channels,
-    const void**restrict input,
+    const xnn_float16** restrict input,
     size_t input_offset,
-    const void*restrict weights,
-    void*restrict output,
+    const xnn_float16* restrict weights,
+    xnn_float16* restrict output,
     size_t output_increment) XNN_OOB_READS
 {
   assert(output_pixels != 0);
@@ -36,8 +37,8 @@ void xnn_f16_ibilinear_ukernel__neonfp16arith_c16(
     const uint16_t* i3 = (const uint16_t*) ((uintptr_t) input[3] + input_offset);
     input += 4;
 
-    const float16x8_t valphah = vreinterpretq_f16_u16(vld1q_dup_u16(weights)); weights = (const uint16_t*) weights + 1;
-    const float16x8_t valphav = vreinterpretq_f16_u16(vld1q_dup_u16(weights)); weights = (const uint16_t*) weights + 1;
+    const float16x8_t valphah = vreinterpretq_f16_u16(vld1q_dup_u16((const uint16_t*)weights)); weights = weights + 1;
+    const float16x8_t valphav = vreinterpretq_f16_u16(vld1q_dup_u16((const uint16_t*)weights)); weights = weights + 1;
 
     size_t c = channels;
     for (; c >= 16 * sizeof(uint16_t); c -= 16 * sizeof(uint16_t)) {
@@ -113,7 +114,7 @@ void xnn_f16_ibilinear_ukernel__neonfp16arith_c16(
         vo_lo = vext_f16(vo_lo, vo_lo, 2);
       }
       if (c & (1 * sizeof(uint16_t))) {
-        vst1_lane_f16(o, vo_lo, 0); o += 1;
+        vst1_lane_u16(o, vreinterpret_u16_f16(vo_lo), 0); o += 1;
       }
     }
 

@@ -11,7 +11,7 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/igemm.h>
+#include "xnnpack/igemm.h"
 
 
 void xnn_f32_igemm_minmax_ukernel_4x2c4__wasmsimd_arm(
@@ -19,9 +19,9 @@ void xnn_f32_igemm_minmax_ukernel_4x2c4__wasmsimd_arm(
     size_t nc,
     size_t kc,
     size_t ks,
-    const float**restrict a,
-    const float*restrict w,
-    float*restrict c,
+    const float** restrict a,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     size_t a_offset,
@@ -54,8 +54,10 @@ void xnn_f32_igemm_minmax_ukernel_4x2c4__wasmsimd_arm(
     c3 = c2;
   }
 
-  const v128_t vmin = wasm_v128_load64_splat(params->wasmsimd.min);
-  const v128_t vmax = wasm_v128_load64_splat(params->wasmsimd.max);
+  const v128_t vmin = wasm_v128_load32_splat(&params->scalar.min);
+  const v128_t vmax = wasm_v128_load32_splat(&params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     v128_t vacc0x0c4 = wasm_v128_load32_zero(w);
     v128_t vacc0x1c4 = wasm_v128_load32_zero(w + 1);
@@ -106,14 +108,14 @@ void xnn_f32_igemm_minmax_ukernel_4x2c4__wasmsimd_arm(
         const v128_t vb1 = wasm_v128_load(w + 4);
         w += 8;
 
-        vacc0x0c4 = wasm_f32x4_add(vacc0x0c4, wasm_f32x4_mul(va0, vb0));
-        vacc0x1c4 = wasm_f32x4_add(vacc0x1c4, wasm_f32x4_mul(va0, vb1));
-        vacc1x0c4 = wasm_f32x4_add(vacc1x0c4, wasm_f32x4_mul(va1, vb0));
-        vacc1x1c4 = wasm_f32x4_add(vacc1x1c4, wasm_f32x4_mul(va1, vb1));
-        vacc2x0c4 = wasm_f32x4_add(vacc2x0c4, wasm_f32x4_mul(va2, vb0));
-        vacc2x1c4 = wasm_f32x4_add(vacc2x1c4, wasm_f32x4_mul(va2, vb1));
-        vacc3x0c4 = wasm_f32x4_add(vacc3x0c4, wasm_f32x4_mul(va3, vb0));
-        vacc3x1c4 = wasm_f32x4_add(vacc3x1c4, wasm_f32x4_mul(va3, vb1));
+        vacc0x0c4 = wasm_f32x4_add(wasm_f32x4_mul(va0, vb0), vacc0x0c4);
+        vacc0x1c4 = wasm_f32x4_add(wasm_f32x4_mul(va0, vb1), vacc0x1c4);
+        vacc1x0c4 = wasm_f32x4_add(wasm_f32x4_mul(va1, vb0), vacc1x0c4);
+        vacc1x1c4 = wasm_f32x4_add(wasm_f32x4_mul(va1, vb1), vacc1x1c4);
+        vacc2x0c4 = wasm_f32x4_add(wasm_f32x4_mul(va2, vb0), vacc2x0c4);
+        vacc2x1c4 = wasm_f32x4_add(wasm_f32x4_mul(va2, vb1), vacc2x1c4);
+        vacc3x0c4 = wasm_f32x4_add(wasm_f32x4_mul(va3, vb0), vacc3x0c4);
+        vacc3x1c4 = wasm_f32x4_add(wasm_f32x4_mul(va3, vb1), vacc3x1c4);
       }
       if XNN_UNLIKELY(k != 0) {
         const v128_t va0 = wasm_v128_load(a0);
@@ -129,14 +131,14 @@ void xnn_f32_igemm_minmax_ukernel_4x2c4__wasmsimd_arm(
         const v128_t vmask0 = wasm_f32x4_eq(vb0, vzero);
         const v128_t vmask1 = wasm_f32x4_eq(vb1, vzero);
 
-        vacc0x0c4 = wasm_f32x4_add(vacc0x0c4, wasm_f32x4_mul(wasm_v128_andnot(va0, vmask0), vb0));
-        vacc0x1c4 = wasm_f32x4_add(vacc0x1c4, wasm_f32x4_mul(wasm_v128_andnot(va0, vmask1), vb1));
-        vacc1x0c4 = wasm_f32x4_add(vacc1x0c4, wasm_f32x4_mul(wasm_v128_andnot(va1, vmask0), vb0));
-        vacc1x1c4 = wasm_f32x4_add(vacc1x1c4, wasm_f32x4_mul(wasm_v128_andnot(va1, vmask1), vb1));
-        vacc2x0c4 = wasm_f32x4_add(vacc2x0c4, wasm_f32x4_mul(wasm_v128_andnot(va2, vmask0), vb0));
-        vacc2x1c4 = wasm_f32x4_add(vacc2x1c4, wasm_f32x4_mul(wasm_v128_andnot(va2, vmask1), vb1));
-        vacc3x0c4 = wasm_f32x4_add(vacc3x0c4, wasm_f32x4_mul(wasm_v128_andnot(va3, vmask0), vb0));
-        vacc3x1c4 = wasm_f32x4_add(vacc3x1c4, wasm_f32x4_mul(wasm_v128_andnot(va3, vmask1), vb1));
+        vacc0x0c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va0, vmask0), vb0), vacc0x0c4);
+        vacc0x1c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va0, vmask1), vb1), vacc0x1c4);
+        vacc1x0c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va1, vmask0), vb0), vacc1x0c4);
+        vacc1x1c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va1, vmask1), vb1), vacc1x1c4);
+        vacc2x0c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va2, vmask0), vb0), vacc2x0c4);
+        vacc2x1c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va2, vmask1), vb1), vacc2x1c4);
+        vacc3x0c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va3, vmask0), vb0), vacc3x0c4);
+        vacc3x1c4 = wasm_f32x4_add(wasm_f32x4_mul(wasm_v128_andnot(va3, vmask1), vb1), vacc3x1c4);
       }
       p -= 4 * sizeof(void*);
     } while (p != 0);

@@ -9,8 +9,8 @@
 
 #include <assert.h>
 
-#include <xnnpack/igemm.h>
-#include <xnnpack/math.h>
+#include "xnnpack/igemm.h"
+#include "xnnpack/math.h"
 
 
 void xnn_f32_igemm_relu_ukernel_2x4__scalar(
@@ -18,14 +18,14 @@ void xnn_f32_igemm_relu_ukernel_2x4__scalar(
     size_t nc,
     size_t kc,
     size_t ks,
-    const float**restrict a,
-    const float*restrict w,
-    float*restrict c,
+    const float** restrict a,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     size_t a_offset,
     const float* zero,
-    const union xnn_f32_relu_params params[restrict XNN_MIN_ELEMENTS(1)])
+    const struct xnn_f32_relu_params params[restrict XNN_MIN_ELEMENTS(1)])
 {
   assert(mr != 0);
   assert(mr <= 2);

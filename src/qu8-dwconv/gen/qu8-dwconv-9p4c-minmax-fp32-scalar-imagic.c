@@ -8,10 +8,13 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <assert.h>
+#include <stddef.h>
+#include <stdint.h>
 
-#include <xnnpack/dwconv.h>
-#include <xnnpack/math.h>
-
+#include "xnnpack/common.h"
+#include "xnnpack/dwconv.h"
+#include "xnnpack/math.h"
+#include "xnnpack/microparams.h"
 
 void xnn_qu8_dwconv_minmax_fp32_ukernel_9p4c__scalar_imagic(
     size_t channels,
@@ -28,12 +31,14 @@ void xnn_qu8_dwconv_minmax_fp32_ukernel_9p4c__scalar_imagic(
   assert(channels != 0);
   assert(output_width != 0);
 
-  const float vscale = params->fp32_scalar_imagic.scale;
-  const float vmagic_bias = params->fp32_scalar_imagic.magic_bias;
-  const int32_t vmagic_min = params->fp32_scalar_imagic.magic_min;
-  const int32_t vmagic_max = params->fp32_scalar_imagic.magic_max;
-  const int32_t vmagic_bias_less_zero_point = params->fp32_scalar_imagic.magic_bias_less_zero_point;
-  const int32_t vkernel_zero_point = params->fp32_scalar_imagic.kernel_zero_point;
+  const float vscale = params->fp32_scalar.scale;
+  const float vmagic_bias = 12582912.0f;
+  const int32_t output_min_less_zero_point = (int32_t) params->fp32_scalar.output_min - (int32_t) params->fp32_scalar.output_zero_point;
+  const int32_t output_max_less_zero_point = (int32_t) params->fp32_scalar.output_max - (int32_t) params->fp32_scalar.output_zero_point;
+  const int32_t vmagic_min = (int32_t) float_as_uint32(12582912.0f + output_min_less_zero_point);
+  const int32_t vmagic_max = (int32_t) float_as_uint32(12582912.0f + output_max_less_zero_point);
+  const int32_t vmagic_bias_less_zero_point = INT32_C(0x4B400000) - (int32_t) params->fp32_scalar.output_zero_point;
+  const int32_t vkernel_zero_point = params->fp32_scalar.kernel_zero_point;
   do {
     const uint8_t* i0 = input[0];
     assert(i0 != NULL);
@@ -282,7 +287,7 @@ void xnn_qu8_dwconv_minmax_fp32_ukernel_9p4c__scalar_imagic(
       const uint8_t* k = (const uint8_t*) ((uintptr_t) w + 4 * sizeof(int32_t));
       do {
         int32_t vacc = *((const int32_t*) w);
-        w = (const void*) ((uintptr_t) w + sizeof(int32_t));
+        w = (const int32_t*) w + 1;
 
         const int32_t vi0 = (int32_t) (uint32_t) *i0++;
         const int32_t vk0 = (int32_t) (uint32_t) k[0] - vkernel_zero_point;

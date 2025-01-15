@@ -11,17 +11,17 @@
 
 #include <arm_neon.h>
 
-#include <xnnpack/common.h>
-#include <xnnpack/ibilinear.h>
+#include "xnnpack/common.h"
+#include "xnnpack/ibilinear.h"
 
 
 void xnn_f32_ibilinear_ukernel__neon_c8(
     size_t output_pixels,
     size_t channels,
-    const float**restrict input,
+    const float** restrict input,
     size_t input_offset,
-    const float*restrict weights,
-    float*restrict output,
+    const float* restrict weights,
+    float* restrict output,
     size_t output_increment) XNN_OOB_READS
 {
   assert(output_pixels != 0);

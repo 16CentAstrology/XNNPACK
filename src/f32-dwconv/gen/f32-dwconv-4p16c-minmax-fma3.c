@@ -11,7 +11,7 @@
 
 #include <immintrin.h>
 
-#include <xnnpack/dwconv.h>
+#include "xnnpack/dwconv.h"
 
 
 void xnn_f32_dwconv_minmax_ukernel_4p16c__fma3(
@@ -29,8 +29,12 @@ void xnn_f32_dwconv_minmax_ukernel_4p16c__fma3(
   assert(channels != 0);
   assert(output_width != 0);
 
-  const __m256 vmax = _mm256_load_ps(params->avx.max);
-  const __m256 vmin = _mm256_load_ps(params->avx.min);
+  static const int32_t mask_table[14] = {-1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0};
+
+  const __m256 vmin = _mm256_set1_ps(params->scalar.min);
+  const __m256 vmax = _mm256_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     const float* i0 = input[0];
     assert(i0 != NULL);
@@ -100,10 +104,10 @@ void xnn_f32_dwconv_minmax_ukernel_4p16c__fma3(
       w += 80;
 
 
-      __m256 vacc01234567 = _mm256_max_ps(vacc01234567p0, vmin);
-      __m256 vacc89ABCDEF = _mm256_max_ps(vacc89ABCDEFp0, vmin);
-      vacc01234567 = _mm256_min_ps(vacc01234567, vmax);
-      vacc89ABCDEF = _mm256_min_ps(vacc89ABCDEF, vmax);
+      __m256 vacc01234567 = _mm256_max_ps(vmin, vacc01234567p0);
+      __m256 vacc89ABCDEF = _mm256_max_ps(vmin, vacc89ABCDEFp0);
+      vacc01234567 = _mm256_min_ps(vmax, vacc01234567);
+      vacc89ABCDEF = _mm256_min_ps(vmax, vacc89ABCDEF);
 
       _mm256_storeu_ps(output, vacc01234567);
       _mm256_storeu_ps(output + 8, vacc89ABCDEF);
@@ -139,8 +143,8 @@ void xnn_f32_dwconv_minmax_ukernel_4p16c__fma3(
       w += 8;
 
 
-      __m256 vacc01234567 = _mm256_max_ps(vacc01234567p0, vmin);
-      vacc01234567 = _mm256_min_ps(vacc01234567, vmax);
+      __m256 vacc01234567 = _mm256_max_ps(vmin, vacc01234567p0);
+      vacc01234567 = _mm256_min_ps(vmax, vacc01234567);
 
       _mm256_storeu_ps(output, vacc01234567);
       output += 8;
@@ -148,7 +152,7 @@ void xnn_f32_dwconv_minmax_ukernel_4p16c__fma3(
     if XNN_UNLIKELY(c != 0) {
       assert(c >= 1);
       assert(c <= 7);
-      const __m256i vmask = _mm256_loadu_si256((const __m256i*) &params->avx.mask_table[7 - c]);
+      const __m256i vmask = _mm256_loadu_si256((const __m256i*) &mask_table[7 - c]);
 
       __m256 vacc01234567p0 = _mm256_load_ps(w);
 
@@ -169,8 +173,8 @@ void xnn_f32_dwconv_minmax_ukernel_4p16c__fma3(
       vacc01234567p0 = _mm256_fmadd_ps(vi3x01234567, vk3x01234567, vacc01234567p0);
 
 
-      __m256 vacc01234567 = _mm256_max_ps(vacc01234567p0, vmin);
-      vacc01234567 = _mm256_min_ps(vacc01234567, vmax);
+      __m256 vacc01234567 = _mm256_max_ps(vmin, vacc01234567p0);
+      vacc01234567 = _mm256_min_ps(vmax, vacc01234567);
 
       __m128 vacc0123 = _mm256_castps256_ps128(vacc01234567);
       if (c & 4) {

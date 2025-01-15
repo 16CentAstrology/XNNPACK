@@ -11,24 +11,24 @@
 
 #include <immintrin.h>
 
-#include <xnnpack/math.h>
-#include <xnnpack/prelu.h>
+#include "xnnpack/math.h"
+#include "xnnpack/vbinary.h"
 
-
-static const int32_t mask_table[14] = {-1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0};
 
 void xnn_f32_prelu_ukernel__avx_2x16(
     size_t rows,
     size_t channels,
-    const float*restrict input,
+    const float* restrict input,
     size_t input_stride,
-    const float*restrict weights,
-    float*restrict output,
+    const float* restrict weights,
+    float* restrict output,
     size_t output_stride)
 {
   assert(rows != 0);
   assert(channels != 0);
   assert(channels % sizeof(float) == 0);
+
+  static const int32_t mask_table[14] = {-1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0};
 
   const float* i0 = input;
   float* o0 = output;

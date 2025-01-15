@@ -8,14 +8,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <xnnpack/common.h>
+#include "xnnpack/common.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 
-#define DECLARE_PAD_UKERNEL_FUNCTION(fn_name) \
+#define XNN_PAD_UKERNEL(arch_flags, fn_name, tile_size) \
   XNN_INTERNAL void fn_name(                  \
     size_t rows,                              \
     size_t channels,                          \
@@ -26,11 +26,8 @@ extern "C" {
     void* output,                             \
     size_t output_stride,                     \
     const uint32_t fill_pattern);
-
-DECLARE_PAD_UKERNEL_FUNCTION(xnn_xx_pad_ukernel__neon)
-DECLARE_PAD_UKERNEL_FUNCTION(xnn_xx_pad_ukernel__scalar)
-DECLARE_PAD_UKERNEL_FUNCTION(xnn_xx_pad_ukernel__sse2)
-DECLARE_PAD_UKERNEL_FUNCTION(xnn_xx_pad_ukernel__wasmsimd)
+#include "xx-pad/xx-pad.h"
+#undef XNN_PAD_UKERNEL
 
 
 #ifdef __cplusplus

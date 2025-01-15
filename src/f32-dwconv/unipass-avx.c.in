@@ -11,7 +11,7 @@ $ABC = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 #include <immintrin.h>
 
-#include <xnnpack/dwconv.h>
+#include "xnnpack/dwconv.h"
 
 
 $ISA = {0: "avx", 3: "fma3"}[FMA]
@@ -30,8 +30,12 @@ void xnn_f32_dwconv_minmax_ukernel_${KERNEL_TILE}p${CHANNEL_TILE}c__${ISA}${"" i
   assert(channels != 0);
   assert(output_width != 0);
 
-  const __m256 vmax = _mm256_load_ps(params->avx.max);
-  const __m256 vmin = _mm256_load_ps(params->avx.min);
+  static const int32_t mask_table[14] = {-1, -1, -1, -1, -1, -1, -1, 0, 0, 0, 0, 0, 0, 0};
+
+  const __m256 vmin = _mm256_set1_ps(params->scalar.min);
+  const __m256 vmax = _mm256_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     $for K in range(KERNEL_TILE):
       const float* i${K} = input[${K}];
@@ -78,9 +82,9 @@ void xnn_f32_dwconv_minmax_ukernel_${KERNEL_TILE}p${CHANNEL_TILE}c__${ISA}${"" i
           $ACC_SLICE *= 2
 
       $for C in range(0, CHANNEL_TILE, 8):
-        __m256 vacc${ABC[C:C+8]} = _mm256_max_ps(vacc${ABC[C:C+8]}p0, vmin);
+        __m256 vacc${ABC[C:C+8]} = _mm256_max_ps(vmin, vacc${ABC[C:C+8]}p0);
       $for C in range(0, CHANNEL_TILE, 8):
-        vacc${ABC[C:C+8]} = _mm256_min_ps(vacc${ABC[C:C+8]}, vmax);
+        vacc${ABC[C:C+8]} = _mm256_min_ps(vmax, vacc${ABC[C:C+8]});
 
       _mm256_storeu_ps(output, vacc${ABC[0:8]});
       $for C in range(8, CHANNEL_TILE, 8):
@@ -114,8 +118,8 @@ void xnn_f32_dwconv_minmax_ukernel_${KERNEL_TILE}p${CHANNEL_TILE}c__${ISA}${"" i
                 vacc01234567p${A} = _mm256_add_ps(vacc01234567p${A}, vacc01234567p${A + ACC_SLICE});
             $ACC_SLICE *= 2
 
-        __m256 vacc01234567 = _mm256_max_ps(vacc01234567p0, vmin);
-        vacc01234567 = _mm256_min_ps(vacc01234567, vmax);
+        __m256 vacc01234567 = _mm256_max_ps(vmin, vacc01234567p0);
+        vacc01234567 = _mm256_min_ps(vmax, vacc01234567);
 
         _mm256_storeu_ps(output, vacc01234567);
         output += 8;
@@ -123,7 +127,7 @@ void xnn_f32_dwconv_minmax_ukernel_${KERNEL_TILE}p${CHANNEL_TILE}c__${ISA}${"" i
     if XNN_UNLIKELY(c != 0) {
       assert(c >= 1);
       assert(c <= 7);
-      const __m256i vmask = _mm256_loadu_si256((const __m256i*) &params->avx.mask_table[7 - c]);
+      const __m256i vmask = _mm256_loadu_si256((const __m256i*) &mask_table[7 - c]);
 
       __m256 vacc01234567p0 = _mm256_load_ps(w);
       $for K in range(KERNEL_TILE):
@@ -146,8 +150,8 @@ void xnn_f32_dwconv_minmax_ukernel_${KERNEL_TILE}p${CHANNEL_TILE}c__${ISA}${"" i
               vacc01234567p${A} = _mm256_add_ps(vacc01234567p${A}, vacc01234567p${A + ACC_SLICE});
           $ACC_SLICE *= 2
 
-      __m256 vacc01234567 = _mm256_max_ps(vacc01234567p0, vmin);
-      vacc01234567 = _mm256_min_ps(vacc01234567, vmax);
+      __m256 vacc01234567 = _mm256_max_ps(vmin, vacc01234567p0);
+      vacc01234567 = _mm256_min_ps(vmax, vacc01234567);
 
       __m128 vacc0123 = _mm256_castps256_ps128(vacc01234567);
       if (c & 4) {

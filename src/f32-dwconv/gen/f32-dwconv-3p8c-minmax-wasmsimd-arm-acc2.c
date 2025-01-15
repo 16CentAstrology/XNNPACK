@@ -11,7 +11,7 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/dwconv.h>
+#include "xnnpack/dwconv.h"
 
 
 void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
@@ -29,8 +29,10 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
   assert(channels != 0);
   assert(output_width != 0);
 
-  const v128_t vmin = wasm_v128_load64_splat(params->wasmsimd.min);
-  const v128_t vmax = wasm_v128_load64_splat(params->wasmsimd.max);
+  const v128_t vmin = wasm_v128_load32_splat(&params->scalar.min);
+  const v128_t vmax = wasm_v128_load32_splat(&params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     const float* i0 = input[0];
     assert(i0 != NULL);
@@ -62,8 +64,8 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
 
       const v128_t vk0x0123 = wasm_v128_load(w + 8);
       const v128_t vk0x4567 = wasm_v128_load(w + 12);
-      vacc0123p0 = wasm_f32x4_add(vacc0123p0, wasm_f32x4_mul(vi0x0123, vk0x0123));
-      vacc4567p0 = wasm_f32x4_add(vacc4567p0, wasm_f32x4_mul(vi0x4567, vk0x4567));
+      vacc0123p0 = wasm_f32x4_add(wasm_f32x4_mul(vi0x0123, vk0x0123), vacc0123p0);
+      vacc4567p0 = wasm_f32x4_add(wasm_f32x4_mul(vi0x4567, vk0x4567), vacc4567p0);
 
       const v128_t vi1x0123 = wasm_v128_load(i1);
       const v128_t vi1x4567 = wasm_v128_load(i1 + 4);
@@ -80,8 +82,8 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
 
       const v128_t vk2x0123 = wasm_v128_load(w + 24);
       const v128_t vk2x4567 = wasm_v128_load(w + 28);
-      vacc0123p0 = wasm_f32x4_add(vacc0123p0, wasm_f32x4_mul(vi2x0123, vk2x0123));
-      vacc4567p0 = wasm_f32x4_add(vacc4567p0, wasm_f32x4_mul(vi2x4567, vk2x4567));
+      vacc0123p0 = wasm_f32x4_add(wasm_f32x4_mul(vi2x0123, vk2x0123), vacc0123p0);
+      vacc4567p0 = wasm_f32x4_add(wasm_f32x4_mul(vi2x4567, vk2x4567), vacc4567p0);
 
       w += 32;
 
@@ -106,7 +108,7 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
       i0 += 4;
 
       const v128_t vk0x0123 = wasm_v128_load(w + 8);
-      vacc0123p0 = wasm_f32x4_add(vacc0123p0, wasm_f32x4_mul(vi0x0123, vk0x0123));
+      vacc0123p0 = wasm_f32x4_add(wasm_f32x4_mul(vi0x0123, vk0x0123), vacc0123p0);
 
       const v128_t vi1x0123 = wasm_v128_load(i1);
       i1 += 4;
@@ -118,7 +120,7 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
       i2 += 4;
 
       const v128_t vk2x0123 = wasm_v128_load(w + 24);
-      vacc0123p0 = wasm_f32x4_add(vacc0123p0, wasm_f32x4_mul(vi2x0123, vk2x0123));
+      vacc0123p0 = wasm_f32x4_add(wasm_f32x4_mul(vi2x0123, vk2x0123), vacc0123p0);
 
       w += 4;
 
@@ -136,7 +138,7 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
 
       const v128_t vi0x0123 = wasm_v128_load(i0);
       const v128_t vk0x0123 = wasm_v128_load(w + 8);
-      vacc0123p0 = wasm_f32x4_add(vacc0123p0, wasm_f32x4_mul(vi0x0123, vk0x0123));
+      vacc0123p0 = wasm_f32x4_add(wasm_f32x4_mul(vi0x0123, vk0x0123), vacc0123p0);
 
       const v128_t vi1x0123 = wasm_v128_load(i1);
       const v128_t vk1x0123 = wasm_v128_load(w + 16);
@@ -144,7 +146,7 @@ void xnn_f32_dwconv_minmax_ukernel_3p8c__wasmsimd_arm_acc2(
 
       const v128_t vi2x0123 = wasm_v128_load(i2);
       const v128_t vk2x0123 = wasm_v128_load(w + 24);
-      vacc0123p0 = wasm_f32x4_add(vacc0123p0, wasm_f32x4_mul(vi2x0123, vk2x0123));
+      vacc0123p0 = wasm_f32x4_add(wasm_f32x4_mul(vi2x0123, vk2x0123), vacc0123p0);
 
       // Add up all accumulators to vacc01234567p0
       vacc0123p0 = wasm_f32x4_add(vacc0123p0, vacc0123p1);

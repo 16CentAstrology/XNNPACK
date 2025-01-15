@@ -7,9 +7,9 @@
 
 #include <arm_neon.h>
 
-#include <xnnpack/conv.h>
-#include <xnnpack/intrinsics-polyfill.h>
-#include <xnnpack/math.h>
+#include "xnnpack/conv.h"
+#include "xnnpack/intrinsics-polyfill.h"
+#include "xnnpack/math.h"
 
 
 void xnn_f16_conv_hwc2chw_ukernel_3x3s2p1c3x4__neonfp16arith_2x2(
@@ -17,10 +17,10 @@ void xnn_f16_conv_hwc2chw_ukernel_3x3s2p1c3x4__neonfp16arith_2x2(
     size_t input_width,
     size_t output_y_start,
     size_t output_y_end,
-    const void* input,
-    const void* zero,
-    const void* weights,
-    void* output,
+    const xnn_float16* input,
+    const xnn_float16* zero,
+    const xnn_float16* weights,
+    xnn_float16* output,
     size_t input_padding_top,
     size_t output_channels,
     size_t output_height_stride,
@@ -47,29 +47,29 @@ void xnn_f16_conv_hwc2chw_ukernel_3x3s2p1c3x4__neonfp16arith_2x2(
   uint16_t* output1 = (uint16_t*) ((uintptr_t) output0 + output_height_stride);
 
   if XNN_UNPREDICTABLE(output_y_start < input_padding_top) {
-    i0 = zero;
+    i0 = (const uint16_t*) zero;
   }
 
-  const float16x4_t vmax = vreinterpret_f16_u16(vld1_dup_u16(&params->fp16arith.max));
-  const float16x4_t vmin = vreinterpret_f16_u16(vld1_dup_u16(&params->fp16arith.min));
+  const float16x4_t vmax = vreinterpret_f16_u16(vld1_dup_u16(&params->scalar.max));
+  const float16x4_t vmin = vreinterpret_f16_u16(vld1_dup_u16(&params->scalar.min));
 
   for (size_t output_y = output_y_start; output_y < output_y_end; output_y += 2) {
     const size_t input_y2 = output_y * 2 + 2 - input_padding_top;
     const size_t input_y4 = input_y2 + 2;
     if XNN_UNPREDICTABLE(input_y2 >= input_height) {
-      i2 = zero;
+      i2 = (const uint16_t*) zero;
     }
     if XNN_UNPREDICTABLE(input_y4 > input_height) {
-      i3 = zero;
+      i3 = (const uint16_t*) zero;
     }
     if XNN_UNPREDICTABLE(input_y4 >= input_height) {
-      i4 = zero;
+      i4 = (const uint16_t*) zero;
     }
     if XNN_UNPREDICTABLE(output_y + 2 > output_y_end) {
       output1 = output0;
     }
 
-    const uint16_t* w = weights;
+    const uint16_t* w = (const uint16_t*) weights;
     size_t c = output_channels;
     uint16_t* o0c0 = output0;
     uint16_t* o1c0 = output1;
@@ -777,11 +777,11 @@ void xnn_f16_conv_hwc2chw_ukernel_3x3s2p1c3x4__neonfp16arith_2x2(
         float16x4_t vi4x3 = vreinterpret_f16_u16(vmov_n_u16(0));
         if (iw > 2) {
           // viMx3 = ( 0.0, 0.0, 0.0, iM3c2 )
-          vi0x3 = vld1_lane_f16(i0 + 8, vi0x3, 0);
-          vi1x3 = vld1_lane_f16(i1 + 8, vi1x3, 0);
-          vi2x3 = vld1_lane_f16(i2 + 8, vi2x3, 0);
-          vi3x3 = vld1_lane_f16(i3 + 8, vi3x3, 0);
-          vi4x3 = vld1_lane_f16(i4 + 8, vi4x3, 0);
+          vi0x3 = vreinterpret_f16_u16(vld1_lane_u16(i0 + 8, vreinterpret_u16_f16(vi0x3), 0));
+          vi1x3 = vreinterpret_f16_u16(vld1_lane_u16(i1 + 8, vreinterpret_u16_f16(vi1x3), 0));
+          vi2x3 = vreinterpret_f16_u16(vld1_lane_u16(i2 + 8, vreinterpret_u16_f16(vi2x3), 0));
+          vi3x3 = vreinterpret_f16_u16(vld1_lane_u16(i3 + 8, vreinterpret_u16_f16(vi3x3), 0));
+          vi4x3 = vreinterpret_f16_u16(vld1_lane_u16(i4 + 8, vreinterpret_u16_f16(vi4x3), 0));
         }
 
 #if XNN_ARCH_ARM64
@@ -933,15 +933,15 @@ void xnn_f16_conv_hwc2chw_ukernel_3x3s2p1c3x4__neonfp16arith_2x2(
         } else {
           // Exactly 1 output width element remaining
 
-          vst1_lane_f16(o1c0, vo1x0, 0); o1c0 += 1;
-          vst1_lane_f16(o1c1, vo1x0, 1); o1c1 += 1;
-          vst1_lane_f16(o1c2, vo1x0, 2); o1c2 += 1;
-          vst1_lane_f16(o1c3, vo1x0, 3); o1c3 += 1;
+          vst1_lane_u16(o1c0, vreinterpret_u16_f16(vo1x0), 0); o1c0 += 1;
+          vst1_lane_u16(o1c1, vreinterpret_u16_f16(vo1x0), 1); o1c1 += 1;
+          vst1_lane_u16(o1c2, vreinterpret_u16_f16(vo1x0), 2); o1c2 += 1;
+          vst1_lane_u16(o1c3, vreinterpret_u16_f16(vo1x0), 3); o1c3 += 1;
 
-          vst1_lane_f16(o0c0, vo0x0, 0); o0c0 += 1;
-          vst1_lane_f16(o0c1, vo0x0, 1); o0c1 += 1;
-          vst1_lane_f16(o0c2, vo0x0, 2); o0c2 += 1;
-          vst1_lane_f16(o0c3, vo0x0, 3); o0c3 += 1;
+          vst1_lane_u16(o0c0, vreinterpret_u16_f16(vo0x0), 0); o0c0 += 1;
+          vst1_lane_u16(o0c1, vreinterpret_u16_f16(vo0x0), 1); o0c1 += 1;
+          vst1_lane_u16(o0c2, vreinterpret_u16_f16(vo0x0), 2); o0c2 += 1;
+          vst1_lane_u16(o0c3, vreinterpret_u16_f16(vo0x0), 3); o0c3 += 1;
         }
       }
       // Move output pointers back to the position of the first pixel in a row,

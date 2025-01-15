@@ -306,11 +306,10 @@ def main(args):
 
 
 #include <gtest/gtest.h>
-
-#include <xnnpack/common.h>
-#include <xnnpack/isa-checks.h>
-
-#include <xnnpack/dwconv.h>
+#include "xnnpack/common.h"
+#include "xnnpack/dwconv.h"
+#include "xnnpack/isa-checks.h"
+#include "xnnpack/microparams-init.h"
 #include "dwconv2d-microkernel-tester.h"
 """.format(specification=options.spec, generator=sys.argv[0])
 
@@ -326,14 +325,7 @@ def main(args):
                                       height_tile, width_tile)
       tests += "\n\n" + xnncommon.postprocess_test_case(test_case, arch, isa)
 
-    txt_changed = True
-    if os.path.exists(options.output):
-      with codecs.open(options.output, "r", encoding="utf-8") as output_file:
-        txt_changed = output_file.read() != tests
-
-    if txt_changed:
-      with codecs.open(options.output, "w", encoding="utf-8") as output_file:
-        output_file.write(tests)
+    xnncommon.overwrite_if_changed(options.output, tests)
 
 
 if __name__ == "__main__":

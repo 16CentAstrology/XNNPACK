@@ -6,17 +6,15 @@
 #include <random>
 #include <vector>
 
+#include "utils.h"
+#include "xnnpack.h"
+#include "xnnpack/common.h"
+#include "xnnpack/microfnptr.h"
+#include "xnnpack/raddexpminusmax.h"
+#include "xnnpack/reduce.h"
+#include "xnnpack/vscaleexpminusmax.h"
+#include "xnnpack/buffer.h"
 #include <benchmark/benchmark.h>
-#include "bench/utils.h"
-
-#include <xnnpack.h>
-#include <xnnpack/aligned-allocator.h>
-#include <xnnpack/common.h>
-#include <xnnpack/microfnptr.h>
-#include <xnnpack/rmax.h>
-#include <xnnpack/raddexpminusmax.h>
-#include <xnnpack/vscaleexpminusmax.h>
-
 
 static void f32_vscaleexpminusmax(
   benchmark::State& state,
@@ -39,8 +37,8 @@ static void f32_vscaleexpminusmax(
 
   const size_t num_buffers = 1 +
     benchmark::utils::DivideRoundUp<size_t>(benchmark::utils::GetMaxCacheSize(), packed_elements * sizeof(float));
-  std::vector<float, AlignedAllocator<float, 64>> x(elements);
-  std::vector<float, AlignedAllocator<float, 64>> y(packed_elements * num_buffers);
+  xnnpack::Buffer<float, XNN_ALLOCATION_ALIGNMENT> x(elements);
+  xnnpack::Buffer<float, XNN_ALLOCATION_ALIGNMENT> y(packed_elements * num_buffers);
 
   std::generate(x.begin(), x.end(), std::ref(f32rng));
 
@@ -49,9 +47,9 @@ static void f32_vscaleexpminusmax(
   size_t buffer_index = 0;
   for (auto _ : state) {
     state.PauseTiming();
-    float x_max = nanf("");
-    rmax(elements * sizeof(float), x.data(), &x_max);
-    float y_sum = nanf("");
+    float x_max;
+    rmax(elements * sizeof(float), x.data(), &x_max, /*params=*/nullptr);
+    float y_sum;
     raddexpminusmax(elements * sizeof(float), x.data(), &y_sum, x_max);
     if (++buffer_index == num_buffers) {
       buffer_index = 0;
@@ -82,130 +80,52 @@ static void CharacteristicArguments(benchmark::internal::Benchmark* b) {
   }
 }
 
-#if XNN_ARCH_X86 || XNN_ARCH_X86_64
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x16,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x16,
+#if XNN_ENABLE_AVX512F && (XNN_ARCH_X86 || XNN_ARCH_X86_64)
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_u16,
+    xnn_f32_rmax_ukernel__avx512f_u64_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_u128_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_u16,
     benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x32,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x32,
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_u32,
+    xnn_f32_rmax_ukernel__avx512f_u64_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_u128_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_u32,
     benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x48,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x48,
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_u48,
+    xnn_f32_rmax_ukernel__avx512f_u64_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_u128_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_u48,
     benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x64,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x64,
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_u64,
+    xnn_f32_rmax_ukernel__avx512f_u64_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_u128_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_u64,
     benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x80,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x80,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x96,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x96,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x112,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x112,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x128,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x128,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x144,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x144,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x160,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x160,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x176,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x176,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx512f_p5_scalef_x192,
-    xnn_f32_rmax_ukernel__avx512f,
-    xnn_f32_raddexpminusmax_ukernel__avx512f_p5_scalef_x128_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx512f_p5_scalef_x192,
-    benchmark::utils::CheckAVX512F)->Apply(CharacteristicArguments)->UseRealTime();
+#endif  // XNN_ENABLE_AVX512F && (XNN_ARCH_X86 || XNN_ARCH_X86_64)
 
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x8,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x8,
+#if XNN_ARCH_X86 || XNN_ARCH_X86_64
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_u8,
+    xnn_f32_rmax_ukernel__avx_u32_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx2_p5_u80_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_u8,
     benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x16,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x16,
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_u16,
+    xnn_f32_rmax_ukernel__avx_u32_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx2_p5_u80_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_u16,
     benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x24,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x24,
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_u24,
+    xnn_f32_rmax_ukernel__avx_u32_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx2_p5_u80_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_u24,
     benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x32,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x32,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x40,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x40,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x48,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x48,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x56,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x56,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x64,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x64,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x72,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x72,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x80,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x80,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x88,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x88,
-    benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
-  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_x96,
-    xnn_f32_rmax_ukernel__avx,
-    xnn_f32_raddexpminusmax_ukernel__avx2_p5_x80_acc2,
-    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_x96,
+  BENCHMARK_CAPTURE(f32_vscaleexpminusmax, avx2_p5_u32,
+    xnn_f32_rmax_ukernel__avx_u32_acc4,
+    xnn_f32_raddexpminusmax_ukernel__avx2_p5_u80_acc2,
+    xnn_f32_vscaleexpminusmax_ukernel__avx2_p5_u32,
     benchmark::utils::CheckAVX2)->Apply(CharacteristicArguments)->UseRealTime();
 #endif  // XNN_ARCH_X86 || XNN_ARCH_X86_64
 
 #ifndef XNNPACK_BENCHMARK_NO_MAIN
-BENCHMARK_MAIN();
+XNN_BENCHMARK_MAIN();
 #endif

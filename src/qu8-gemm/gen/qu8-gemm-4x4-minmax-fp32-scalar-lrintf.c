@@ -10,8 +10,8 @@
 #include <assert.h>
 #include <math.h>
 
-#include <xnnpack/gemm.h>
-#include <xnnpack/math.h>
+#include "xnnpack/gemm.h"
+#include "xnnpack/math.h"
 
 
 void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
@@ -52,7 +52,14 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
     c3 = c2;
   }
 
-  const int32_t vb_zero_point = params->fp32_scalar_lrintf.kernel_zero_point;
+  const int32_t output_min_less_zero_point = (int32_t) params->fp32_scalar.output_min - (int32_t) params->fp32_scalar.output_zero_point;
+  const int32_t output_max_less_zero_point = (int32_t) params->fp32_scalar.output_max - (int32_t) params->fp32_scalar.output_zero_point;
+  const float vscale = params->fp32_scalar.scale;
+  const float voutput_min_less_zero_point = output_min_less_zero_point;
+  const float voutput_max_less_zero_point = output_max_less_zero_point;
+  const int32_t voutput_zero_point = params->fp32_scalar.output_zero_point;
+
+  const int32_t vb_zero_point = params->fp32_scalar.kernel_zero_point;
   do {
     int32_t vacc0x0 = ((const int32_t*) w)[0];
     int32_t vacc0x1 = ((const int32_t*) w)[1];
@@ -70,7 +77,7 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
     int32_t vacc3x1 = vacc0x1;
     int32_t vacc3x2 = vacc0x2;
     int32_t vacc3x3 = vacc0x3;
-    w = (const void*) ((const int32_t*) w + 4);
+    w = (const int32_t*) w + 4;
 
     size_t k = kc;
     do {
@@ -83,7 +90,7 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
       const int32_t vb1 = (int32_t) (uint32_t) ((const uint8_t*) w)[1] - vb_zero_point;
       const int32_t vb2 = (int32_t) (uint32_t) ((const uint8_t*) w)[2] - vb_zero_point;
       const int32_t vb3 = (int32_t) (uint32_t) ((const uint8_t*) w)[3] - vb_zero_point;
-      w = (const void*) ((const uint8_t*) w + 4);
+      w = (const uint8_t*) w + 4;
 
       vacc0x0 += va0 * vb0;
       vacc0x1 += va0 * vb1;
@@ -122,7 +129,6 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
     float vfpacc3x2 = (float) vacc3x2;
     float vfpacc3x3 = (float) vacc3x3;
 
-    const float vscale = params->fp32_scalar_lrintf.scale;
     vfpacc0x0 *= vscale;
     vfpacc0x1 *= vscale;
     vfpacc0x2 *= vscale;
@@ -140,7 +146,6 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
     vfpacc3x2 *= vscale;
     vfpacc3x3 *= vscale;
 
-    const float voutput_min_less_zero_point = params->fp32_scalar_lrintf.output_min_less_zero_point;
     vfpacc0x0 = math_max_f32(vfpacc0x0, voutput_min_less_zero_point);
     vfpacc0x1 = math_max_f32(vfpacc0x1, voutput_min_less_zero_point);
     vfpacc0x2 = math_max_f32(vfpacc0x2, voutput_min_less_zero_point);
@@ -158,7 +163,6 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
     vfpacc3x2 = math_max_f32(vfpacc3x2, voutput_min_less_zero_point);
     vfpacc3x3 = math_max_f32(vfpacc3x3, voutput_min_less_zero_point);
 
-    const float voutput_max_less_zero_point = params->fp32_scalar_lrintf.output_max_less_zero_point;
     vfpacc0x0 = math_min_f32(vfpacc0x0, voutput_max_less_zero_point);
     vfpacc0x1 = math_min_f32(vfpacc0x1, voutput_max_less_zero_point);
     vfpacc0x2 = math_min_f32(vfpacc0x2, voutput_max_less_zero_point);
@@ -193,7 +197,6 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_4x4__scalar_lrintf(
     const int32_t vrndacc3x2 = (int32_t) lrintf(vfpacc3x2);
     const int32_t vrndacc3x3 = (int32_t) lrintf(vfpacc3x3);
 
-    const int32_t voutput_zero_point = params->fp32_scalar_lrintf.output_zero_point;
     int32_t vout0x0 = vrndacc0x0 + voutput_zero_point;
     int32_t vout0x1 = vrndacc0x1 + voutput_zero_point;
     int32_t vout0x2 = vrndacc0x2 + voutput_zero_point;

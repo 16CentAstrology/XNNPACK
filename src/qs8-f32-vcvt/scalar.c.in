@@ -6,17 +6,17 @@
 $assert BATCH_TILE >= 1
 #include <assert.h>
 
-#include <xnnpack/common.h>
-#include <xnnpack/math.h>
-#include <xnnpack/vcvt.h>
+#include "xnnpack/common.h"
+#include "xnnpack/math.h"
+#include "xnnpack/vcvt.h"
 
 
 $XINT8_T = {"QS8": "int8_t", "QU8": "uint8_t"}[DATATYPE]
-void xnn_${DATATYPE.lower()}_f32_vcvt_ukernel__scalar_x${BATCH_TILE}(
+void xnn_${DATATYPE.lower()}_f32_vcvt_ukernel__scalar_u${BATCH_TILE}(
     size_t batch,
     const ${XINT8_T}* input,
     float* output,
-    const union xnn_${DATATYPE.lower()}_f32_cvt_params params[restrict XNN_MIN_ELEMENTS(1)])
+    const struct xnn_${DATATYPE.lower()}_f32_cvt_params params[restrict XNN_MIN_ELEMENTS(1)])
 {
   assert(batch != 0);
   assert(batch % sizeof(${XINT8_T}) == 0);

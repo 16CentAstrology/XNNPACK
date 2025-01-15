@@ -11,17 +11,17 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/gemm.h>
+#include "xnnpack/gemm.h"
 
 
 void xnn_f32_gemm_minmax_ukernel_1x8__wasmsimd_arm_loadsplat(
     size_t mr,
     size_t nc,
     size_t kc,
-    const float*restrict a,
+    const float* restrict a,
     size_t a_stride,
-    const float*restrict w,
-    float*restrict c,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     const union xnn_f32_minmax_params params[restrict XNN_MIN_ELEMENTS(1)])
@@ -38,8 +38,10 @@ void xnn_f32_gemm_minmax_ukernel_1x8__wasmsimd_arm_loadsplat(
   const float* a0 = a;
   float* c0 = c;
 
-  const v128_t vmin = wasm_v128_load64_splat(params->wasmsimd.min);
-  const v128_t vmax = wasm_v128_load64_splat(params->wasmsimd.max);
+  const v128_t vmin = wasm_v128_load32_splat(&params->scalar.min);
+  const v128_t vmax = wasm_v128_load32_splat(&params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     v128_t vacc0x0123 = wasm_v128_load(w + 0);
     v128_t vacc0x4567 = wasm_v128_load(w + 4);

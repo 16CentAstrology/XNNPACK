@@ -11,7 +11,7 @@
 
 #include <xmmintrin.h>
 
-#include <xnnpack/gemm.h>
+#include "xnnpack/gemm.h"
 
 
 void xnn_f32_gemm_minmax_ukernel_4x2c4__sse(
@@ -55,6 +55,11 @@ void xnn_f32_gemm_minmax_ukernel_4x2c4__sse(
     a3 = a2;
     c3 = c2;
   }
+
+  const __m128 vmin = _mm_set1_ps(params->scalar.min);
+  const __m128 vmax = _mm_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
 
   do {
     __m128 vacc0x0c4 = _mm_load_ss(w);
@@ -126,35 +131,33 @@ void xnn_f32_gemm_minmax_ukernel_4x2c4__sse(
     __m128 vacc01x01 = _mm_add_ps(_mm_movelh_ps(vacc0x01c2, vacc1x01c2), _mm_movehl_ps(vacc1x01c2, vacc0x01c2));
     __m128 vacc23x01 = _mm_add_ps(_mm_movelh_ps(vacc2x01c2, vacc3x01c2), _mm_movehl_ps(vacc3x01c2, vacc2x01c2));
 
-    const __m128 vmax = _mm_load_ps(params->sse.max);
     vacc01x01 = _mm_min_ps(vacc01x01, vmax);
     vacc23x01 = _mm_min_ps(vacc23x01, vmax);
 
-    const __m128 vmin = _mm_load_ps(params->sse.min);
     vacc01x01 = _mm_max_ps(vacc01x01, vmin);
     vacc23x01 = _mm_max_ps(vacc23x01, vmin);
 
     if XNN_LIKELY(nc >= 2) {
-      _mm_storel_pi((__m64*) c2, vacc23x01);
-      c2 = (float*) ((uintptr_t) c2 + cn_stride);
-      a2 = (const float*) ((uintptr_t) a2 - kc);
-      _mm_storeh_pi((__m64*) c3, vacc23x01);
-      c3 = (float*) ((uintptr_t) c3 + cn_stride);
-      a3 = (const float*) ((uintptr_t) a3 - kc);
       _mm_storel_pi((__m64*) c0, vacc01x01);
       c0 = (float*) ((uintptr_t) c0 + cn_stride);
       a0 = (const float*) ((uintptr_t) a0 - kc);
       _mm_storeh_pi((__m64*) c1, vacc01x01);
       c1 = (float*) ((uintptr_t) c1 + cn_stride);
       a1 = (const float*) ((uintptr_t) a1 - kc);
+      _mm_storel_pi((__m64*) c2, vacc23x01);
+      c2 = (float*) ((uintptr_t) c2 + cn_stride);
+      a2 = (const float*) ((uintptr_t) a2 - kc);
+      _mm_storeh_pi((__m64*) c3, vacc23x01);
+      c3 = (float*) ((uintptr_t) c3 + cn_stride);
+      a3 = (const float*) ((uintptr_t) a3 - kc);
 
       nc -= 2;
     } else {
       assert(nc == 1);
-      _mm_store_ss(c2, vacc23x01);
-      _mm_store_ss(c3, _mm_movehl_ps(vacc23x01, vacc23x01));
       _mm_store_ss(c0, vacc01x01);
       _mm_store_ss(c1, _mm_movehl_ps(vacc01x01, vacc01x01));
+      _mm_store_ss(c2, vacc23x01);
+      _mm_store_ss(c3, _mm_movehl_ps(vacc23x01, vacc23x01));
 
       nc = 0;
     }

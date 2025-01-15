@@ -104,6 +104,7 @@
   #define XNN_PLATFORM_MAC 0
 #endif
 
+// Mobile build x86 versions for debugging
 #if XNN_PLATFORM_ANDROID || XNN_PLATFORM_IOS
   #define XNN_PLATFORM_MOBILE 1
 #else
@@ -134,10 +135,16 @@
   #define XNN_PLATFORM_QURT 0
 #endif
 
-#if (XNN_ARCH_ARM || XNN_ARCH_ARM64) && !XNN_PLATFORM_IOS && !XNN_PLATFORM_FUCHSIA
-  #define XNN_PLATFORM_JIT 1
+#if XNN_PLATFORM_WINDOWS
+  #define XNN_HAS_MMAP 0
 #else
-  #define XNN_PLATFORM_JIT 0
+  #define XNN_HAS_MMAP 1
+#endif
+
+#if XNN_PLATFORM_WINDOWS
+  #define XNN_HAS_PTHREADS 0
+#else
+  #define XNN_HAS_PTHREADS 1
 #endif
 
 // Define compile identification macros
@@ -166,11 +173,6 @@
 
 #ifndef XNN_COMPILER_ICC
   #define XNN_COMPILER_ICC 0
-#endif
-
-
-#ifndef XNN_TEST_MODE
-  #define XNN_TEST_MODE 0
 #endif
 
 #ifndef XNN_MAX_UARCH_TYPES
@@ -238,6 +240,12 @@
   #define XNN_MIN_ELEMENTS(count) static count
 #endif
 
+#if defined(__cplusplus) || XNN_COMPILER_MSVC
+  #define XNN_RESTRICT
+#else
+  #define XNN_RESTRICT restrict
+#endif
+
 #if defined(__GNUC__)
   #define XNN_LIKELY(condition) (__builtin_expect(!!(condition), 1))
   #define XNN_UNLIKELY(condition) (__builtin_expect(!!(condition), 0))
@@ -275,6 +283,12 @@
 #define XNN_OOB_READS XNN_DISABLE_TSAN XNN_DISABLE_MSAN XNN_DISABLE_HWASAN
 
 #if defined(__GNUC__)
+  #define XNN_FALLTHROUGH __attribute__((fallthrough));
+#else
+  #define XNN_FALLTHROUGH /* fall through */
+#endif
+
+#if defined(__GNUC__)
   #define XNN_INTRINSIC inline __attribute__((__always_inline__, __artificial__))
 #elif defined(_MSC_VER)
   #define XNN_INTRINSIC __forceinline
@@ -310,6 +324,16 @@
   #endif
 #endif
 
+#ifndef XNN_WEAK_SYMBOL
+  #if defined(_WIN32)
+    #define XNN_WEAK_SYMBOL __declspec(selectany)
+  #elif XNN_COMPILER_CLANG || XNN_COMPILER_GCC || XNN_COMPILER_ICC
+    #define XNN_WEAK_SYMBOL __attribute__((weak))
+  #else
+    #define XNN_WEAK_SYMBOL
+  #endif
+#endif
+
 #if defined(__clang__)
   #define XNN_PRAGMA_CLANG(pragma) _Pragma(pragma)
 #else
@@ -324,6 +348,50 @@
   #else
     #define XNN_ALLOCATION_ALIGNMENT 64
   #endif
+#elif XNN_ARCH_HEXAGON
+  #define XNN_ALLOCATION_ALIGNMENT 128
 #else
   #define XNN_ALLOCATION_ALIGNMENT 16
 #endif
+
+// Number of extra elements to allocate for DWCONV accumulators/buffers.
+#if XNN_ARCH_X86 || XNN_ARCH_X86_64
+  // For AVX512.
+  #define XNN_MAX_SIMD_SIZE 64
+#elif XNN_ARCH_HEXAGON
+  #define XNN_MAX_SIMD_SIZE 128
+#else
+  // XNN_ARCH_ARM, XNN_ARCH_ARM64, XNN_ARCH_WASM, XNN_ARCH_WASMSIMD, XNN_ARCH_WASMRELAXEDSIMD, XNN_ARCH_RISVC.
+  // Wasm/Scalar gavgpool microkernels can over-read by 4 buffers.
+  #define XNN_MAX_SIMD_SIZE 16
+#endif
+
+// Use constant here to avoid dependency on xnnpack.h
+#if XNN_MAX_SIMD_SIZE >= 16
+  #define XNN_MULTIPASS_EXTRA_BYTES XNN_MAX_SIMD_SIZE
+#else
+  #define XNN_MULTIPASS_EXTRA_BYTES 16
+#endif
+
+#if XNN_ARCH_ARM || XNN_ARCH_X86 || XNN_ARCH_X86_64 || XNN_ARCH_WASM || XNN_ARCH_WASMSIMD || XNN_ARCH_WASMRELAXEDSIMD
+  // These architectures are slow to broadcast, the compiler tries to move them
+  // into loops, and when it runs out of registers, it will redundantly perform
+  // the broadcast. Marking them as memory read by assembly forces the compiler
+  // to maintain the value in memory.
+  #if defined(__GNUC__)
+    #define XNN_FORCE_REALIZATION(x) __asm volatile(""::"m"(x));
+  #else
+    #define XNN_FORCE_REALIZATION(x)
+  #endif
+#else
+  #define XNN_FORCE_REALIZATION(x)
+#endif
+
+#define XNN_LOG2_SIZEOF_INT8_T   0  // log2(sizeof(int8_t))
+#define XNN_LOG2_SIZEOF_UINT8_T  0  // log2(sizeof(uint8_t))
+#define XNN_LOG2_SIZEOF_INT16_T  1  // log2(sizeof(int16_t))
+#define XNN_LOG2_SIZEOF_UINT16_T 1  // log2(sizeof(uint16_t))
+#define XNN_LOG2_SIZEOF_HALF     1  // log2(sizeof(half))
+#define XNN_LOG2_SIZEOF_FLOAT    2  // log2(sizeof(float))
+#define XNN_LOG2_SIZEOF_INT32_T  2  // log2(sizeof(int32_t))
+#define XNN_LOG2_SIZEOF_UINT32_T 2  // log2(sizeof(uint32_t))

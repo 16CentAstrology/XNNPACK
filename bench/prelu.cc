@@ -7,13 +7,15 @@
 #include <cfloat>
 #include <cmath>
 #include <functional>
+#include <limits>
+#include <memory>
 #include <random>
 #include <vector>
 
-#include <xnnpack.h>
-
+#include "utils.h"
+#include "xnnpack.h"
+#include "xnnpack/buffer.h"
 #include <benchmark/benchmark.h>
-#include "bench/utils.h"
 #ifdef BENCHMARK_TENSORFLOW_LITE
 #include "flatbuffers/include/flatbuffers/flatbuffers.h"
 #include "tensorflow/lite/interpreter.h"
@@ -35,11 +37,14 @@ void xnnpack_prelu_f32(benchmark::State& state, const char* net) {
   auto f32irng = std::bind(std::uniform_real_distribution<float>(-1.0f, 1.0f), std::ref(rng));
   auto f32wrng = std::bind(std::uniform_real_distribution<float>(0.25f, 0.75f), std::ref(rng));
 
-  std::vector<float> input(batch_size * height * width * channels + XNN_EXTRA_BYTES / sizeof(float));
+  xnnpack::Buffer<float> input(batch_size * height * width * channels + XNN_EXTRA_BYTES / sizeof(float));
   std::generate(input.begin(), input.end(), std::ref(f32irng));
-  std::vector<float> slope(channels);
+  xnnpack::Buffer<float> slope(channels);
   std::generate(slope.begin(), slope.end(), std::ref(f32wrng));
-  std::vector<float> output(batch_size * height * width * channels);
+  xnnpack::Buffer<float> output(batch_size * height * width * channels);
+
+  const size_t input_shape[4] = {batch_size, height, width, channels};
+  const size_t slope_shape[1] = {channels};
 
   xnn_status status = xnn_initialize(nullptr /* allocator */);
   if (status != xnn_status_success) {
@@ -48,27 +53,31 @@ void xnnpack_prelu_f32(benchmark::State& state, const char* net) {
   }
 
   xnn_operator_t prelu_op = nullptr;
-  status = xnn_create_prelu_nc_f32(
-    channels, channels /* input stride */, channels /* output stride */,
-    slope.data(),
-    0 /* flags */, nullptr, &prelu_op);
+  status = xnn_create_binary_elementwise_nd(xnn_binary_prelu, xnn_datatype_fp32,
+                                            nullptr, nullptr, nullptr,
+                                            /*flags=*/0, &prelu_op);
   if (status != xnn_status_success) {
     state.SkipWithError("failed to create FP32 PReLU operator");
     return;
   }
 
-  status = xnn_setup_prelu_nc_f32(
-    prelu_op,
-    batch_size * height * width,
-    input.data(), output.data(),
-    nullptr /* thread pool */);
+  status = xnn_reshape_binary_elementwise_nd(prelu_op, 4, &input_shape[0], 1,
+                                             &slope_shape[0],
+                                             /*threadpool=*/nullptr);
+  if (status != xnn_status_success) {
+    state.SkipWithError("failed to reshape FP32 PReLU operator");
+    return;
+  }
+
+  status = xnn_setup_binary_elementwise_nd(prelu_op, input.data(), slope.data(),
+                                           output.data());
   if (status != xnn_status_success) {
     state.SkipWithError("failed to setup FP32 PReLU operator");
     return;
   }
 
   for (auto _ : state) {
-    status = xnn_run_operator(prelu_op, nullptr /* thread pool */);
+    status = xnn_run_operator(prelu_op, /*threadpool=*/nullptr);
     if (status != xnn_status_success) {
       state.SkipWithError("failed to run FP32 PReLU operator");
       return;
@@ -108,7 +117,7 @@ void tflite_prelu_f32(benchmark::State& state, const char* net) {
   auto f32irng = std::bind(std::uniform_real_distribution<float>(-1.0f, 1.0f), std::ref(rng));
   auto f32wrng = std::bind(std::uniform_real_distribution<float>(0.25f, 0.75f), std::ref(rng));
 
-  std::vector<float> slope(channels);
+  xnnpack::Buffer<float> slope(channels);
   std::generate(slope.begin(), slope.end(), std::ref(f32wrng));
 
   flatbuffers::FlatBufferBuilder builder;
@@ -247,5 +256,5 @@ BENCHMARK_CAPTURE(xnnpack_prelu_f32, imagenet, "ImageNet 224x224")->Apply(ImageN
 #endif  // BENCHMARK_TENSORFLOW_LITE
 
 #ifndef XNNPACK_BENCHMARK_NO_MAIN
-BENCHMARK_MAIN();
+XNN_BENCHMARK_MAIN();
 #endif

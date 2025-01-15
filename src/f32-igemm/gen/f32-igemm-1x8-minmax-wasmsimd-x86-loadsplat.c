@@ -11,7 +11,7 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/igemm.h>
+#include "xnnpack/igemm.h"
 
 
 void xnn_f32_igemm_minmax_ukernel_1x8__wasmsimd_x86_loadsplat(
@@ -19,9 +19,9 @@ void xnn_f32_igemm_minmax_ukernel_1x8__wasmsimd_x86_loadsplat(
     size_t nc,
     size_t kc,
     size_t ks,
-    const float**restrict a,
-    const float*restrict w,
-    float*restrict c,
+    const float** restrict a,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     size_t a_offset,
@@ -42,8 +42,10 @@ void xnn_f32_igemm_minmax_ukernel_1x8__wasmsimd_x86_loadsplat(
 
   float* c0 = c;
 
-  const v128_t vmin = wasm_v128_load64_splat(params->wasmsimd.min);
-  const v128_t vmax = wasm_v128_load64_splat(params->wasmsimd.max);
+  const v128_t vmin = wasm_v128_load32_splat(&params->scalar.min);
+  const v128_t vmax = wasm_v128_load32_splat(&params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     v128_t vacc0x0123 = wasm_v128_load(w);
     v128_t vacc0x4567 = wasm_v128_load(w + 4);
@@ -67,8 +69,8 @@ void xnn_f32_igemm_minmax_ukernel_1x8__wasmsimd_x86_loadsplat(
         const v128_t va0 = wasm_v128_load32_splat(a0);
         a0 += 1;
 
-        vacc0x0123 = wasm_f32x4_add(vacc0x0123, wasm_f32x4_mul(va0, vb0123));
-        vacc0x4567 = wasm_f32x4_add(vacc0x4567, wasm_f32x4_mul(va0, vb4567));
+        vacc0x0123 = wasm_f32x4_add(wasm_f32x4_mul(va0, vb0123), vacc0x0123);
+        vacc0x4567 = wasm_f32x4_add(wasm_f32x4_mul(va0, vb4567), vacc0x4567);
         k -= sizeof(float);
       } while (k != 0);
       p -= 1 * sizeof(void*);

@@ -6,29 +6,45 @@
 // Include first for the platform detection macros.
 #include "xnnpack/common.h"
 
+#if XNN_PLATFORM_WEB
+#include <emscripten/emscripten.h>
+#endif  // XNN_PLATFORM_WEB
+
 #if XNN_PLATFORM_WINDOWS
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+
+#include <inttypes.h>
 #include <windows.h>
+
 #else
 // This define needs to come first because errno include features.h and would have defined macros that lead to
 // sys/mman.h not having mremap.
 #if !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
+
 #include <errno.h>
+#if XNN_HAS_MMAP
 #include <sys/mman.h>
+#endif
 #include <unistd.h>
+#endif  // XNN_PLATFORM_WINDOWS
+
+#if XNN_PLATFORM_QURT
+#include "qurt/qurt_alloc.h"  // NOLINT - header provided by Hexagon toolchain
 #endif
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
-#include <xnnpack/log.h>
-#include <xnnpack/math.h>
-#include <xnnpack/memory.h>
-
+#include "xnnpack.h"
+#include "xnnpack/log.h"
+#include "xnnpack/math.h"
+#include "xnnpack/memory.h"
 
 // Helpers to allocate/mmap and release memory used by both code and weights cache.
 
@@ -42,8 +58,11 @@ static size_t get_page_size() {
       GetSystemInfo(&sysinfo);
       assert(sysinfo.dwPageSize != 0);
       system_page_size = (size_t) sysinfo.dwPageSize;
+    #elif XNN_PLATFORM_QURT || !XNN_HAS_MMAP
+      // sysconf(_SC_PAGESIZE) will fail, but we're just using malloc anyway.
+      system_page_size = 4096;
     #else
-      const long result = sysconf(_SC_PAGESIZE);
+      long result = sysconf(_SC_PAGESIZE);
       if (result == -1) {
         xnn_log_fatal("failed to get page size, error code: %d", errno);
       }
@@ -66,12 +85,22 @@ static void* allocate_buffer(size_t size) {
                   size, (uint32_t) GetLastError());
     return NULL;
   }
+#elif XNN_PLATFORM_QURT
+  // Emulate through qurt_malloc.
+  void* p = qurt_malloc(size);
+  if (p == NULL) {
+    xnn_log_error("failed to allocate %zu bytes for code/weights buffer, error code: %d", size, errno);
+    return NULL;
+  }
+#elif !XNN_HAS_MMAP
+  // Emulate through malloc.
+  void* p = malloc(size);
+  if (p == NULL) {
+    xnn_log_error("failed to allocate %zu bytes for code/weights buffer, error code: %d", size, errno);
+    return NULL;
+  }
 #else
-  #if XNN_PLATFORM_QURT
-    void* p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
-  #else
-    void* p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-  #endif
+  void* p = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (p == MAP_FAILED) {
     xnn_log_error("failed to allocate %zu bytes for code/weights buffer, error code: %d", size, errno);
     return NULL;
@@ -83,11 +112,17 @@ static void* allocate_buffer(size_t size) {
 // Releases memory previously mapped by `allocate_buffer`, returns xnn_status_success on success.
 static enum xnn_status release_memory(void* start, size_t capacity) {
 #if XNN_PLATFORM_WINDOWS
-  // We only decommited any unused capacity, so we release all of it now.
+  // We only decommitted any unused capacity, so we release all of it now.
   if (!VirtualFree(start, 0, MEM_RELEASE)) {
     xnn_log_error("failed to release code/weights buffer, error code: %" PRIu32, (uint32_t) GetLastError());
     return xnn_status_invalid_state;
   }
+#elif XNN_PLATFORM_QURT
+  // Emulate through qurt_free.
+  qurt_free(start);
+#elif !XNN_HAS_MMAP
+  // Emulate through free.
+  free(start);
 #else
   if (munmap(start, capacity) == -1) {
     xnn_log_error("failed to release code/weights buffer, error code: %d", errno);
@@ -106,7 +141,7 @@ static void* resize_buffer(
 {
   const size_t new_capacity = round_up_po2(new_size, get_page_size());
   #if XNN_PLATFORM_LINUX
-    void* new_pointer = mremap(old_pointer, old_size, new_capacity, MREMAP_MAYMOVE, NULL);
+    void* new_pointer = mremap(old_pointer, old_capacity, new_capacity, MREMAP_MAYMOVE, NULL);
     if (new_pointer == MAP_FAILED) {
       xnn_log_error("mremap failed with errno: %d", errno);
       return NULL;
@@ -131,19 +166,6 @@ static void* resize_buffer(
   return new_pointer;
 }
 
-enum xnn_status xnn_allocate_code_memory(struct xnn_code_buffer* buffer, size_t size) {
-  memset(buffer, 0, sizeof(struct xnn_code_buffer));
-  const size_t page_aligned_size = round_up_po2(size, get_page_size());
-  buffer->start = allocate_buffer(page_aligned_size);
-  if (buffer->start == NULL) {
-    return xnn_status_out_of_memory;
-  }
-
-  buffer->size = 0;
-  buffer->capacity = page_aligned_size;
-  return xnn_status_success;
-}
-
 // Releases unused memory. Will write the new capacity to `capacity`.
 static enum xnn_status release_unused_memory(size_t size, void* start, size_t* capacity) {
   // Release all unused pages.
@@ -161,21 +183,26 @@ static enum xnn_status release_unused_memory(size_t size, void* start, size_t* c
     #if XNN_PLATFORM_WINDOWS
       // We cannot selectively release pages inside the region of pages, so just decommit them.
       if (!VirtualFree((void*) unused_start, unused_capacity, MEM_DECOMMIT)) {
-        xnn_log_error("failed to unmap code/weights buffer, error code: %" PRIu32, (uint32_t) GetLastError());
+        xnn_log_error("failed to unmap weights buffer, error code: %" PRIu32, (uint32_t) GetLastError());
         return xnn_status_invalid_state;
       }
       *capacity = page_aligned_size;
+    #elif XNN_PLATFORM_QURT || !XNN_HAS_MMAP
+      // We can't selectively release parts of this memory --
+      // we *could* release the entire block if unused_capacity == *capacity,
+      // but that would invalidate the start pointer. Just do nothing.
+      (void) unused_start;
     #elif !XNN_PLATFORM_WEB
       // Web does not support partial unmapping.
       if (munmap((void*) unused_start, unused_capacity) == -1) {
-        xnn_log_error("failed to unmap code/weights buffer, error code: %d", errno);
+        xnn_log_error("failed to unmap weights buffer, error code: %d", errno);
         return xnn_status_invalid_state;
       }
       *capacity = page_aligned_size;
     #else
       if (unused_capacity == *capacity) {
         if (munmap((void*) unused_start, unused_capacity) == -1) {
-          xnn_log_error("failed to unmap code/weights buffer, error code: %d", errno);
+          xnn_log_error("failed to unmap weights buffer, error code: %d", errno);
           return xnn_status_invalid_state;
         } else {
           *capacity = 0;
@@ -210,8 +237,8 @@ static enum xnn_status set_memory_permission(void* start, size_t size, enum xnn_
         "failed to set memory permission (%d), error code: %" PRIu32, permission, (uint32_t) GetLastError());
       return xnn_status_invalid_state;
     }
-  #elif XNN_PLATFORM_WEB
-    // Memory protection not supported on Web.
+  #elif XNN_PLATFORM_WEB || XNN_PLATFORM_QURT || !XNN_HAS_MMAP
+    // Memory protection not supported.
     return xnn_status_success;
   #else
     int prot = 0;
@@ -230,74 +257,6 @@ static enum xnn_status set_memory_permission(void* start, size_t size, enum xnn_
       return xnn_status_invalid_state;
     }
   #endif
-  return xnn_status_success;
-}
-
-#if XNN_PLATFORM_JIT
-enum xnn_status xnn_finalize_code_memory(struct xnn_code_buffer* buffer) {
-  const enum xnn_status status = release_unused_memory(buffer->size, buffer->start, &buffer->capacity);
-  if (status != xnn_status_success) {
-    return status;
-  }
-
-  if (buffer->capacity == 0) {
-    return xnn_status_success;
-  }
-
-  // Flush icache, do it before changing permissions due to bugs on older ARM64 kernels.
-  #if (XNN_ARCH_ARM || XNN_ARCH_ARM64) && XNN_PLATFORM_JIT
-    #if XNN_PLATFORM_WINDOWS
-      FlushInstructionCache(GetCurrentProcess(), buffer->start, buffer->capacity);
-    #else
-      // iOS toolchain doesn't support this, use sys_icache_invalidate, when we support iOS.
-      __builtin___clear_cache(buffer->start, (void*) ((uint8_t*) buffer->start + buffer->capacity));
-    #endif  // XNN_PLATFORM_WINDOWS
-  #endif  // (XNN_ARCH_ARM || XNN_ARCH_ARM64) && !XNN_PLATFORM_IOS
-
-  // Set permissions to RX (no write).
-  #if XNN_PLATFORM_WINDOWS
-    DWORD old = 0;
-    if (!VirtualProtect(buffer->start, buffer->size, PAGE_EXECUTE_READ, &old)) {
-      xnn_log_error("failed to make code buffer read+execute, error code: %" PRIu32, (uint32_t) GetLastError());
-      return xnn_status_invalid_state;
-    }
-  #else
-    if (mprotect(buffer->start, buffer->size, PROT_READ | PROT_EXEC) == -1) {
-      xnn_log_error("failed to make code buffer read+execute, error code: %d", errno);
-      return xnn_status_invalid_state;
-    }
-  #endif
-  return set_memory_permission(buffer->start, buffer->size, xnn_memory_permission_read_execute);
-}
-#endif  // XNN_PLATFORM_JIT
-
-enum xnn_status xnn_release_code_memory(struct xnn_code_buffer* buffer) {
-  if (buffer->capacity == 0) {
-    return xnn_status_success;
-  }
-  const enum xnn_status status = release_memory(buffer->start, buffer->capacity);
-  if (status != xnn_status_success) {
-    return status;
-  }
-  memset(buffer, 0, sizeof(struct xnn_code_buffer));
-  return xnn_status_success;
-}
-
-enum xnn_status xnn_reserve_code_memory(struct xnn_code_buffer* buffer, size_t min_available_size) {
-  if (buffer->size + min_available_size <= buffer->capacity) {
-    return xnn_status_success;
-  }
-  xnn_log_debug("reserving code memory of size %zu", min_available_size);
-
-  size_t new_capacity = 0;
-  void* new_start =
-    resize_buffer(buffer->start, buffer->size, buffer->capacity, buffer->size + min_available_size, &new_capacity);
-  if (new_start == NULL) {
-    xnn_log_error("failed to reserve code memory");
-    return xnn_status_out_of_memory;
-  }
-  buffer->start = new_start;
-  buffer->capacity = new_capacity;
   return xnn_status_success;
 }
 
@@ -322,7 +281,7 @@ enum xnn_status xnn_release_weights_memory(struct xnn_weights_buffer* buffer) {
   if (status != xnn_status_success) {
     return status;
   }
-  memset(buffer, 0, sizeof(struct xnn_code_buffer));
+  memset(buffer, 0, sizeof(struct xnn_weights_buffer));
   return xnn_status_success;
 }
 

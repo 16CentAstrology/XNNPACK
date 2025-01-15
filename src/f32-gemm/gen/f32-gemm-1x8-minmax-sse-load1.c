@@ -9,19 +9,19 @@
 
 #include <assert.h>
 
-#include <xmmintrin.h>
+#include <immintrin.h>
 
-#include <xnnpack/gemm.h>
+#include "xnnpack/gemm.h"
 
 
 void xnn_f32_gemm_minmax_ukernel_1x8__sse_load1(
     size_t mr,
     size_t nc,
     size_t kc,
-    const float*restrict a,
+    const float* restrict a,
     size_t a_stride,
-    const float*restrict w,
-    float*restrict c,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     const union xnn_f32_minmax_params params[restrict XNN_MIN_ELEMENTS(1)])
@@ -37,6 +37,10 @@ void xnn_f32_gemm_minmax_ukernel_1x8__sse_load1(
 
   const float* a0 = a;
   float* c0 = c;
+  const __m128 vmin = _mm_set1_ps(params->scalar.min);
+  const __m128 vmax = _mm_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
 
   do {
     __m128 vacc0x0123 = _mm_load_ps(w + 0);
@@ -58,11 +62,9 @@ void xnn_f32_gemm_minmax_ukernel_1x8__sse_load1(
       k -= sizeof(float);
     } while (k != 0);
 
-    const __m128 vmax = _mm_load_ps(params->sse.max);
     vacc0x0123 = _mm_min_ps(vacc0x0123, vmax);
     vacc0x4567 = _mm_min_ps(vacc0x4567, vmax);
 
-    const __m128 vmin = _mm_load_ps(params->sse.min);
     vacc0x0123 = _mm_max_ps(vacc0x0123, vmin);
     vacc0x4567 = _mm_max_ps(vacc0x4567, vmin);
 

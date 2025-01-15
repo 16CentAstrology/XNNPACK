@@ -11,17 +11,17 @@
 
 #include <immintrin.h>
 
-#include <xnnpack/gemm.h>
+#include "xnnpack/gemm.h"
 
 
 void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
     size_t mr,
     size_t nc,
     size_t kc,
-    const float*restrict a,
+    const float* restrict a,
     size_t a_stride,
-    const float*restrict w,
-    float*restrict c,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     const union xnn_f32_minmax_params params[restrict XNN_MIN_ELEMENTS(1)]) XNN_OOB_READS
@@ -37,6 +37,10 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
 
   const float* a0 = a;
   float* c0 = c;
+  const __m256 vmin = _mm256_set1_ps(params->scalar.min);
+  const __m256 vmax = _mm256_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
 
   do {
     __m256 vacc0x01234567 = _mm256_load_ps(w + 0);
@@ -48,7 +52,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       __m256 va0 = _mm256_broadcast_ps((const __m128*) a0);
       a0 += 4;
 
-
       const __m256 vb01234567c0 = _mm256_load_ps(w + 0);
       const __m256 vb89ABCDEFc0 = _mm256_load_ps(w + 8);
 
@@ -56,7 +59,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       vacc0x89ABCDEF = _mm256_fmadd_ps(va0, vb89ABCDEFc0, vacc0x89ABCDEF);
 
       va0 = _mm256_permute_ps(va0, _MM_SHUFFLE(0, 3, 2, 1));
-
       const __m256 vb01234567c1 = _mm256_load_ps(w + 16);
       const __m256 vb89ABCDEFc1 = _mm256_load_ps(w + 24);
 
@@ -64,7 +66,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       vacc0x89ABCDEF = _mm256_fmadd_ps(va0, vb89ABCDEFc1, vacc0x89ABCDEF);
 
       va0 = _mm256_permute_ps(va0, _MM_SHUFFLE(0, 3, 2, 1));
-
       const __m256 vb01234567c2 = _mm256_load_ps(w + 32);
       const __m256 vb89ABCDEFc2 = _mm256_load_ps(w + 40);
 
@@ -72,7 +73,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       vacc0x89ABCDEF = _mm256_fmadd_ps(va0, vb89ABCDEFc2, vacc0x89ABCDEF);
 
       va0 = _mm256_permute_ps(va0, _MM_SHUFFLE(0, 3, 2, 1));
-
       const __m256 vb01234567c3 = _mm256_load_ps(w + 48);
       const __m256 vb89ABCDEFc3 = _mm256_load_ps(w + 56);
 
@@ -88,7 +88,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       a0 = (const float*) ((uintptr_t) a0 + k);
 
       const __m256 vzero = _mm256_setzero_ps();
-
       const __m256 vb01234567c0 = _mm256_load_ps(w + 0);
       const __m256 vb89ABCDEFc0 = _mm256_load_ps(w + 8);
 
@@ -96,7 +95,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       vacc0x89ABCDEF = _mm256_fmadd_ps(_mm256_and_ps(va0, _mm256_cmp_ps(vb89ABCDEFc0, vzero, _CMP_NEQ_OQ)), vb89ABCDEFc0, vacc0x89ABCDEF);
 
       va0 = _mm256_permute_ps(va0, _MM_SHUFFLE(0, 3, 2, 1));
-
       const __m256 vb01234567c1 = _mm256_load_ps(w + 16);
       const __m256 vb89ABCDEFc1 = _mm256_load_ps(w + 24);
 
@@ -104,7 +102,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       vacc0x89ABCDEF = _mm256_fmadd_ps(_mm256_and_ps(va0, _mm256_cmp_ps(vb89ABCDEFc1, vzero, _CMP_NEQ_OQ)), vb89ABCDEFc1, vacc0x89ABCDEF);
 
       va0 = _mm256_permute_ps(va0, _MM_SHUFFLE(0, 3, 2, 1));
-
       const __m256 vb01234567c2 = _mm256_load_ps(w + 32);
       const __m256 vb89ABCDEFc2 = _mm256_load_ps(w + 40);
 
@@ -112,7 +109,6 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       vacc0x89ABCDEF = _mm256_fmadd_ps(_mm256_and_ps(va0, _mm256_cmp_ps(vb89ABCDEFc2, vzero, _CMP_NEQ_OQ)), vb89ABCDEFc2, vacc0x89ABCDEF);
 
       va0 = _mm256_permute_ps(va0, _MM_SHUFFLE(0, 3, 2, 1));
-
       const __m256 vb01234567c3 = _mm256_load_ps(w + 48);
       const __m256 vb89ABCDEFc3 = _mm256_load_ps(w + 56);
 
@@ -123,13 +119,11 @@ void xnn_f32_gemm_minmax_ukernel_1x16s4__fma3_broadcast(
       w += 64;
     }
 
-    const __m256 vmin = _mm256_load_ps(params->avx.min);
-    vacc0x01234567 = _mm256_max_ps(vacc0x01234567, vmin);
-    vacc0x89ABCDEF = _mm256_max_ps(vacc0x89ABCDEF, vmin);
+    vacc0x01234567 = _mm256_max_ps(vmin, vacc0x01234567);
+    vacc0x89ABCDEF = _mm256_max_ps(vmin, vacc0x89ABCDEF);
 
-    const __m256 vmax = _mm256_load_ps(params->avx.max);
-    vacc0x01234567 = _mm256_min_ps(vacc0x01234567, vmax);
-    vacc0x89ABCDEF = _mm256_min_ps(vacc0x89ABCDEF, vmax);
+    vacc0x01234567 = _mm256_min_ps(vmax, vacc0x01234567);
+    vacc0x89ABCDEF = _mm256_min_ps(vmax, vacc0x89ABCDEF);
 
     if XNN_LIKELY(nc >= 16) {
       _mm256_storeu_ps(c0, vacc0x01234567);

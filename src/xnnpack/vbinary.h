@@ -11,731 +11,97 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <xnnpack/common.h>
-#include <xnnpack/microparams.h>
+#include "xnnpack/common.h"
+#include "xnnpack/math.h"
+#include "xnnpack/microparams.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define DECLARE_F16_VBINOP_UKERNEL_FUNCTION(fn_name) \
-  XNN_INTERNAL void fn_name(                         \
-        size_t n,                                    \
-        const void* a,                               \
-        const void* b,                               \
-        void* y,                                     \
-        const union xnn_f16_default_params* params);
+#define XNN_UKERNEL_WITH_PARAMS(arch_flags, ukernel, batch_tile, vector_tile, \
+                                datatype, params_type, init_params)           \
+  XNN_INTERNAL void ukernel(                                                  \
+      size_t n, const xnn_float16* a, const xnn_float16* b, xnn_float16* y,   \
+      const params_type params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
+#include "f16-vbinary/f16-vadd.h"
+#include "f16-vbinary/f16-vaddc.h"
+#include "f16-vbinary/f16-vcmul.h"
+#include "f16-vbinary/f16-vdiv.h"
+#include "f16-vbinary/f16-vdivc.h"
+#include "f16-vbinary/f16-vmax.h"
+#include "f16-vbinary/f16-vmaxc.h"
+#include "f16-vbinary/f16-vmin.h"
+#include "f16-vbinary/f16-vminc.h"
+#include "f16-vbinary/f16-vmul.h"
+#include "f16-vbinary/f16-vmulc.h"
+#include "f16-vbinary/f16-vprelu.h"
+#include "f16-vbinary/f16-vpreluc.h"
+#include "f16-vbinary/f16-vrpreluc.h"
+#include "f16-vbinary/f16-vrdivc.h"
+#include "f16-vbinary/f16-vrsubc.h"
+#include "f16-vbinary/f16-vsqrdiff.h"
+#include "f16-vbinary/f16-vsqrdiffc.h"
+#include "f16-vbinary/f16-vsub.h"
+#include "f16-vbinary/f16-vsubc.h"
+#undef XNN_UKERNEL_WITH_PARAMS
 
-#define DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(fn_name) \
-  XNN_INTERNAL void fn_name(                                \
-      size_t n,                                             \
-      const void* a,                                        \
-      const void* b,                                        \
-      void* y,                                              \
-      const union xnn_f16_minmax_params* params);
+#define XNN_UKERNEL_WITH_PARAMS(arch_flags, ukernel, batch_tile, vector_tile, \
+                                datatype, params_type, init_params)           \
+  XNN_INTERNAL void ukernel(                                                  \
+      size_t n, const float* a, const float* b, float* y,                     \
+      const params_type params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
+#include "f32-vbinary/f32-vadd.h"
+#include "f32-vbinary/f32-vaddc.h"
+#include "f32-vbinary/f32-vcopysign.h"
+#include "f32-vbinary/f32-vcopysignc.h"
+#include "f32-vbinary/f32-vcmul.h"
+#include "f32-vbinary/f32-vdiv.h"
+#include "f32-vbinary/f32-vdivc.h"
+#include "f32-vbinary/f32-vmax.h"
+#include "f32-vbinary/f32-vmaxc.h"
+#include "f32-vbinary/f32-vmin.h"
+#include "f32-vbinary/f32-vminc.h"
+#include "f32-vbinary/f32-vmul.h"
+#include "f32-vbinary/f32-vmulc.h"
+#include "f32-vbinary/f32-vprelu.h"
+#include "f32-vbinary/f32-vpreluc.h"
+#include "f32-vbinary/f32-vrpreluc.h"
+#include "f32-vbinary/f32-vrcopysignc.h"
+#include "f32-vbinary/f32-vrdivc.h"
+#include "f32-vbinary/f32-vrsubc.h"
+#include "f32-vbinary/f32-vsqrdiff.h"
+#include "f32-vbinary/f32-vsqrdiffc.h"
+#include "f32-vbinary/f32-vsub.h"
+#include "f32-vbinary/f32-vsubc.h"
+#undef XNN_UKERNEL_WITH_PARAMS
 
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__neonfp16arith_x16)
+#define XNN_UKERNEL_WITH_PARAMS(arch_flags, ukernel, batch_tile, vector_tile, \
+                                datatype, params_type, init_params)           \
+  XNN_INTERNAL void ukernel(                                                  \
+      size_t n, const uint8_t* input_a, const uint8_t* input_b,               \
+      uint8_t* output,                                                        \
+      const params_type params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
+#include "qu8-vadd/qu8-vadd-minmax.h"
+#include "qu8-vaddc/qu8-vaddc-minmax.h"
+#include "qu8-vmul/qu8-vmul-minmax-fp32.h"
+#include "qu8-vmul/qu8-vmul-minmax-rndnu.h"
+#include "qu8-vmulc/qu8-vmulc-minmax-fp32.h"
+#include "qu8-vmulc/qu8-vmulc-minmax-rndnu.h"
+#undef XNN_UKERNEL_WITH_PARAMS
 
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__fp16arith_x4)
-
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmin_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiff_ukernel__f16c_x16)
-
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__aarch64_neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__aarch64_neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__neonfp16arith_x16)
-
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__fp16arith_x4)
-
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vadd_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdiv_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmul_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsub_minmax_ukernel__f16c_x16)
-
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__neonfp16arith_x16)
-
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__fp16arith_x4)
-
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vmaxc_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vminc_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_UKERNEL_FUNCTION(xnn_f16_vsqrdiffc_ukernel__f16c_x16)
-
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__aarch64_neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__aarch64_neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__aarch64_neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__aarch64_neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__neonfp16arith_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__neonfp16arith_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__neonfp16arith_x16)
-
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__fp16arith_x4)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__fp16arith_x1)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__fp16arith_x2)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__fp16arith_x4)
-
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vaddc_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vdivc_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vmulc_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrdivc_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vrsubc_minmax_ukernel__f16c_x16)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__f16c_x8)
-DECLARE_F16_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f16_vsubc_minmax_ukernel__f16c_x16)
-
-
-#define DECLARE_F32_VBINOP_UKERNEL_FUNCTION(fn_name) \
-  XNN_INTERNAL void fn_name(                         \
-      size_t n,                                      \
-      const float* a,                                \
-      const float* b,                                \
-      float* y,                                      \
-      const union xnn_f32_default_params* params);
-
-#define DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(fn_name) \
-  XNN_INTERNAL void fn_name(                                \
-      size_t n,                                             \
-      const float* a,                                       \
-      const float* b,                                       \
-      float* y,                                             \
-      const union xnn_f32_minmax_params* params);
-
-#define DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(fn_name) \
-  XNN_INTERNAL void fn_name(                              \
-      size_t n,                                           \
-      const float* a,                                     \
-      const float* b,                                     \
-      float* y,                                           \
-      const union xnn_f32_relu_params* params);
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__avx_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__avx_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__neon_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__neon_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__sse_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__sse_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmin_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__avx_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__avx_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__neon_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__neon_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__sse_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__sse_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiff_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vadd_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdiv_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmul_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsub_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vaddc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vdivc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmulc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrdivc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vrsubc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsubc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vadd_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__aarch64_neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__aarch64_neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdiv_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmul_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsub_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vadd_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdiv_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmul_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsub_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__avx_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__avx_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__neon_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__neon_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__sse_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__sse_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vmaxc_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__avx_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__avx_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__neon_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__neon_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__sse_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__sse_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vminc_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__avx_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__avx_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__neon_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__neon_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__sse_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__sse_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_UKERNEL_FUNCTION(xnn_f32_vsqrdiffc_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vaddc_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__aarch64_neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__aarch64_neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vdivc_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__aarch64_neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__aarch64_neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrdivc_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vmulc_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vsubc_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__avx_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__avx_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__avx512f_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__avx512f_x32)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__neon_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__neon_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__sse_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__sse_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasmsimd_arm_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasmsimd_arm_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasmsimd_arm_x16)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasmsimd_x86_x4)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasmsimd_x86_x8)
-DECLARE_F32_VBINOP_MINMAX_UKERNEL_FUNCTION(xnn_f32_vrsubc_minmax_ukernel__wasmsimd_x86_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vaddc_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vdivc_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrdivc_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vmulc_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vsubc_relu_ukernel__wasmsimd_x16)
-
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__scalar_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__scalar_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__scalar_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__scalar_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasm_x1)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasm_x2)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasm_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasm_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasmsimd_x4)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasmsimd_x8)
-DECLARE_F32_VBINOP_RELU_UKERNEL_FUNCTION(xnn_f32_vrsubc_relu_ukernel__wasmsimd_x16)
+#define XNN_UKERNEL_WITH_PARAMS(arch_flags, ukernel, batch_tile, vector_tile, \
+                                datatype, params_type, init_params)           \
+  XNN_INTERNAL void ukernel(                                                  \
+      size_t n, const int8_t* input_a, const int8_t* input_b, int8_t* output, \
+      const params_type params[XNN_RESTRICT XNN_MIN_ELEMENTS(1)]);
+#include "qs8-vadd/qs8-vadd-minmax.h"
+#include "qs8-vaddc/qs8-vaddc-minmax.h"
+#include "qs8-vmul/qs8-vmul-minmax-fp32.h"
+#include "qs8-vmul/qs8-vmul-minmax-rndnu.h"
+#include "qs8-vmulc/qs8-vmulc-minmax-fp32.h"
+#include "qs8-vmulc/qs8-vmulc-minmax-rndnu.h"
+#undef XNN_UKERNEL_WITH_PARAMS
 
 #ifdef __cplusplus
 }  // extern "C"

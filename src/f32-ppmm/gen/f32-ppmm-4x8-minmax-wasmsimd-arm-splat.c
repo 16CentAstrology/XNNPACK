@@ -11,16 +11,16 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/ppmm.h>
+#include "xnnpack/ppmm.h"
 
 
 void xnn_f32_ppmm_minmax_ukernel_4x8__wasmsimd_arm_splat(
   size_t mr,
   size_t nc,
   size_t kc,
-  const float*restrict a,
-  const float*restrict w,
-  float*restrict c,
+  const float* restrict a,
+  const float* restrict w,
+  float* restrict c,
   size_t cm_stride,
   size_t cn_stride,
   const union xnn_f32_minmax_params params[restrict XNN_MIN_ELEMENTS(1)])
@@ -45,8 +45,10 @@ void xnn_f32_ppmm_minmax_ukernel_4x8__wasmsimd_arm_splat(
     c3 = c2;
   }
 
-  const v128_t vmin = wasm_v128_load64_splat(params->wasmsimd.min);
-  const v128_t vmax = wasm_v128_load64_splat(params->wasmsimd.max);
+  const v128_t vmin = wasm_v128_load32_splat(&params->scalar.min);
+  const v128_t vmax = wasm_v128_load32_splat(&params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     v128_t vacc0x0123 = wasm_v128_load(w);
     v128_t vacc0x4567 = wasm_v128_load(w + 4);

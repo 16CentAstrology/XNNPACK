@@ -9,8 +9,8 @@
 
 #include <assert.h>
 
-#include <xnnpack/gemm.h>
-#include <xnnpack/math.h>
+#include "xnnpack/gemm.h"
+#include "xnnpack/math.h"
 
 
 void xnn_qu8_gemm_minmax_fp32_ukernel_1x4__scalar_imagic(
@@ -33,13 +33,21 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_1x4__scalar_imagic(
   const uint8_t* a0 = a;
   uint8_t* c0 = c;
 
-  const int32_t vb_zero_point = params->fp32_scalar_imagic.kernel_zero_point;
+  const int32_t output_min_less_zero_point = (int32_t) params->fp32_scalar.output_min - (int32_t) params->fp32_scalar.output_zero_point;
+  const int32_t output_max_less_zero_point = (int32_t) params->fp32_scalar.output_max - (int32_t) params->fp32_scalar.output_zero_point;
+  const float vscale = params->fp32_scalar.scale;
+  const float vmagic_bias = 12582912.0f;
+  const int32_t vmagic_min = (int32_t) float_as_uint32(12582912.0f + output_min_less_zero_point);
+  const int32_t vmagic_max = (int32_t) float_as_uint32(12582912.0f + output_max_less_zero_point);
+  const int32_t vmagic_bias_less_zero_point = INT32_C(0x4B400000) - (int32_t) params->fp32_scalar.output_zero_point;
+
+  const int32_t vb_zero_point = params->fp32_scalar.kernel_zero_point;
   do {
     int32_t vacc0x0 = ((const int32_t*) w)[0];
     int32_t vacc0x1 = ((const int32_t*) w)[1];
     int32_t vacc0x2 = ((const int32_t*) w)[2];
     int32_t vacc0x3 = ((const int32_t*) w)[3];
-    w = (const void*) ((const int32_t*) w + 4);
+    w = (const int32_t*) w + 4;
 
     size_t k = kc;
     do {
@@ -49,7 +57,7 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_1x4__scalar_imagic(
       const int32_t vb1 = (int32_t) (uint32_t) ((const uint8_t*) w)[1] - vb_zero_point;
       const int32_t vb2 = (int32_t) (uint32_t) ((const uint8_t*) w)[2] - vb_zero_point;
       const int32_t vb3 = (int32_t) (uint32_t) ((const uint8_t*) w)[3] - vb_zero_point;
-      w = (const void*) ((const uint8_t*) w + 4);
+      w = (const uint8_t*) w + 4;
 
       vacc0x0 += va0 * vb0;
       vacc0x1 += va0 * vb1;
@@ -64,13 +72,11 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_1x4__scalar_imagic(
     float vfpacc0x2 = (float) vacc0x2;
     float vfpacc0x3 = (float) vacc0x3;
 
-    const float vscale = params->fp32_scalar_imagic.scale;
     vfpacc0x0 *= vscale;
     vfpacc0x1 *= vscale;
     vfpacc0x2 *= vscale;
     vfpacc0x3 *= vscale;
 
-    const float vmagic_bias = params->fp32_scalar_imagic.magic_bias;
     vfpacc0x0 += vmagic_bias;
     vfpacc0x1 += vmagic_bias;
     vfpacc0x2 += vmagic_bias;
@@ -81,19 +87,16 @@ void xnn_qu8_gemm_minmax_fp32_ukernel_1x4__scalar_imagic(
     int32_t vout0x2 = (int32_t) float_as_uint32(vfpacc0x2);
     int32_t vout0x3 = (int32_t) float_as_uint32(vfpacc0x3);
 
-    const int32_t vmagic_min = params->fp32_scalar_imagic.magic_min;
     vout0x0 = math_max_s32(vout0x0, vmagic_min);
     vout0x1 = math_max_s32(vout0x1, vmagic_min);
     vout0x2 = math_max_s32(vout0x2, vmagic_min);
     vout0x3 = math_max_s32(vout0x3, vmagic_min);
 
-    const int32_t vmagic_max = params->fp32_scalar_imagic.magic_max;
     vout0x0 = math_min_s32(vout0x0, vmagic_max);
     vout0x1 = math_min_s32(vout0x1, vmagic_max);
     vout0x2 = math_min_s32(vout0x2, vmagic_max);
     vout0x3 = math_min_s32(vout0x3, vmagic_max);
 
-    const int32_t vmagic_bias_less_zero_point = params->fp32_scalar_imagic.magic_bias_less_zero_point;
     vout0x0 -= vmagic_bias_less_zero_point;
     vout0x1 -= vmagic_bias_less_zero_point;
     vout0x2 -= vmagic_bias_less_zero_point;

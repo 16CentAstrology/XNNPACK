@@ -10,10 +10,16 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.5 FATAL_ERROR)
 
 PROJECT(cpuinfo-download NONE)
 
+# Set file timestamps to the time of extraction.
+IF(POLICY CMP0135)
+  CMAKE_POLICY(SET CMP0135 NEW)
+ENDIF()
+
+# LINT.IfChange
 INCLUDE(ExternalProject)
 ExternalProject_Add(cpuinfo
-  URL https://github.com/pytorch/cpuinfo/archive/5fd22cacd12f9e74e6a7b014505bbbdc173ede79.zip
-  URL_HASH SHA256=6e69caadfef72932c0838b7458a704202329512039ec6f789e2ef1e97e7b5050
+  URL https://github.com/pytorch/cpuinfo/archive/8a1772a0c5c447df2d18edf33ec4603a8c9c04a6.zip
+  URL_HASH SHA256=4bf314b3f04db2fd984fef38a7e278e702b74297ef0af592b73296edba02b9d4
   SOURCE_DIR "${CMAKE_BINARY_DIR}/cpuinfo-source"
   BINARY_DIR "${CMAKE_BINARY_DIR}/cpuinfo"
   CONFIGURE_COMMAND ""
@@ -22,3 +28,4 @@ ExternalProject_Add(cpuinfo
   INSTALL_COMMAND ""
   TEST_COMMAND ""
 )
+# LINT.ThenChange(../MODULE.bazel:cpuinfo)

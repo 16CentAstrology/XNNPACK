@@ -11,7 +11,7 @@
 
 #include <immintrin.h>
 
-#include <xnnpack/igemm.h>
+#include "xnnpack/igemm.h"
 
 
 void xnn_f32_igemm_minmax_ukernel_4x8__avx_broadcast(
@@ -19,9 +19,9 @@ void xnn_f32_igemm_minmax_ukernel_4x8__avx_broadcast(
     size_t nc,
     size_t kc,
     size_t ks,
-    const float**restrict a,
-    const float*restrict w,
-    float*restrict c,
+    const float** restrict a,
+    const float* restrict w,
+    float* restrict c,
     size_t cm_stride,
     size_t cn_stride,
     size_t a_offset,
@@ -53,6 +53,11 @@ void xnn_f32_igemm_minmax_ukernel_4x8__avx_broadcast(
   if XNN_UNPREDICTABLE(mr != 4) {
     c3 = c2;
   }
+
+  const __m256 vmin = _mm256_set1_ps(params->scalar.min);
+  const __m256 vmax = _mm256_set1_ps(params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
 
   do {
     __m256 vacc0x01234567 = _mm256_load_ps(w);
@@ -108,17 +113,15 @@ void xnn_f32_igemm_minmax_ukernel_4x8__avx_broadcast(
       p -= 4 * sizeof(void*);
     } while (p != 0);
 
-    const __m256 vmin = _mm256_load_ps(params->avx.min);
-    vacc0x01234567 = _mm256_max_ps(vacc0x01234567, vmin);
-    vacc1x01234567 = _mm256_max_ps(vacc1x01234567, vmin);
-    vacc2x01234567 = _mm256_max_ps(vacc2x01234567, vmin);
-    vacc3x01234567 = _mm256_max_ps(vacc3x01234567, vmin);
+    vacc0x01234567 = _mm256_max_ps(vmin, vacc0x01234567);
+    vacc1x01234567 = _mm256_max_ps(vmin, vacc1x01234567);
+    vacc2x01234567 = _mm256_max_ps(vmin, vacc2x01234567);
+    vacc3x01234567 = _mm256_max_ps(vmin, vacc3x01234567);
 
-    const __m256 vmax = _mm256_load_ps(params->avx.max);
-    vacc0x01234567 = _mm256_min_ps(vacc0x01234567, vmax);
-    vacc1x01234567 = _mm256_min_ps(vacc1x01234567, vmax);
-    vacc2x01234567 = _mm256_min_ps(vacc2x01234567, vmax);
-    vacc3x01234567 = _mm256_min_ps(vacc3x01234567, vmax);
+    vacc0x01234567 = _mm256_min_ps(vmax, vacc0x01234567);
+    vacc1x01234567 = _mm256_min_ps(vmax, vacc1x01234567);
+    vacc2x01234567 = _mm256_min_ps(vmax, vacc2x01234567);
+    vacc3x01234567 = _mm256_min_ps(vmax, vacc3x01234567);
 
     if XNN_LIKELY(nc >= 8) {
       _mm256_storeu_ps(c3, vacc3x01234567);

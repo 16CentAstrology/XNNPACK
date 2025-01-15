@@ -11,17 +11,17 @@
 
 #include <wasm_simd128.h>
 
-#include <xnnpack/math.h>
-#include <xnnpack/vmulcaddc.h>
+#include "xnnpack/math.h"
+#include "xnnpack/vmulcaddc.h"
 
 
 void xnn_f32_vmulcaddc_minmax_ukernel_c4__wasmrelaxedsimd_fma_2x(
     size_t rows,
     size_t channels,
-    const float*restrict input,
+    const float* restrict input,
     size_t input_stride,
-    const float*restrict weights,
-    float*restrict output,
+    const float* restrict weights,
+    float* restrict output,
     size_t output_stride,
     const union xnn_f32_minmax_params params[restrict XNN_MIN_ELEMENTS(1)]) XNN_OOB_READS
 {
@@ -37,8 +37,10 @@ void xnn_f32_vmulcaddc_minmax_ukernel_c4__wasmrelaxedsimd_fma_2x(
   const size_t input_increment = input_stride * 2 - channels;
   const size_t output_increment = output_stride * 2 - channels;
 
-  const v128_t vmin = wasm_v128_load64_splat(params->wasmsimd.min);
-  const v128_t vmax = wasm_v128_load64_splat(params->wasmsimd.max);
+  const v128_t vmin = wasm_v128_load32_splat(&params->scalar.min);
+  const v128_t vmax = wasm_v128_load32_splat(&params->scalar.max);
+  XNN_FORCE_REALIZATION(vmin);
+  XNN_FORCE_REALIZATION(vmax);
   do {
     if XNN_UNPREDICTABLE(rows < 2) {
       i1 = i0;
@@ -57,14 +59,14 @@ void xnn_f32_vmulcaddc_minmax_ukernel_c4__wasmrelaxedsimd_fma_2x(
 
       const v128_t vbias0123 = wasm_v128_load(w + 4);
 
-      vacc0x0123 = __builtin_wasm_fma_f32x4(vbias0123, vscale0123, vacc0x0123);
-      vacc1x0123 = __builtin_wasm_fma_f32x4(vbias0123, vscale0123, vacc1x0123);
+      vacc0x0123 = wasm_f32x4_relaxed_madd(vscale0123, vacc0x0123, vbias0123);
+      vacc1x0123 = wasm_f32x4_relaxed_madd(vscale0123, vacc1x0123, vbias0123);
 
-      vacc0x0123 = __builtin_wasm_relaxed_max_f32x4(vmin, vacc0x0123);
-      vacc1x0123 = __builtin_wasm_relaxed_max_f32x4(vmin, vacc1x0123);
+      vacc0x0123 = wasm_f32x4_relaxed_max(vmin, vacc0x0123);
+      vacc1x0123 = wasm_f32x4_relaxed_max(vmin, vacc1x0123);
 
-      vacc0x0123 = __builtin_wasm_relaxed_min_f32x4(vmax, vacc0x0123);
-      vacc1x0123 = __builtin_wasm_relaxed_min_f32x4(vmax, vacc1x0123);
+      vacc0x0123 = wasm_f32x4_relaxed_min(vmax, vacc0x0123);
+      vacc1x0123 = wasm_f32x4_relaxed_min(vmax, vacc1x0123);
 
       wasm_v128_store(o0, vacc0x0123);
       o0 += 4;
@@ -83,14 +85,14 @@ void xnn_f32_vmulcaddc_minmax_ukernel_c4__wasmrelaxedsimd_fma_2x(
 
       const v128_t vbias = wasm_v128_load(w + 4);
 
-      vacc0 = __builtin_wasm_fma_f32x4(vbias, vscale, vacc0);
-      vacc1 = __builtin_wasm_fma_f32x4(vbias, vscale, vacc1);
+      vacc0 = wasm_f32x4_relaxed_madd(vscale, vacc0, vbias);
+      vacc1 = wasm_f32x4_relaxed_madd(vscale, vacc1, vbias);
 
-      vacc0 = __builtin_wasm_relaxed_max_f32x4(vmin, vacc0);
-      vacc1 = __builtin_wasm_relaxed_max_f32x4(vmin, vacc1);
+      vacc0 = wasm_f32x4_relaxed_max(vmin, vacc0);
+      vacc1 = wasm_f32x4_relaxed_max(vmin, vacc1);
 
-      vacc0 = __builtin_wasm_relaxed_min_f32x4(vmax, vacc0);
-      vacc1 = __builtin_wasm_relaxed_min_f32x4(vmax, vacc1);
+      vacc0 = wasm_f32x4_relaxed_min(vmax, vacc0);
+      vacc1 = wasm_f32x4_relaxed_min(vmax, vacc1);
 
       if (c & (2 * sizeof(float))) {
         wasm_v128_store64_lane(o0, vacc0, 0);
